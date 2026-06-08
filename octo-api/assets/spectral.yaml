@@ -1,0 +1,277 @@
+# Octo API OpenAPI lint ruleset
+# Reference: https://docs.stoplight.io/docs/spectral
+#
+# This ruleset enforces R1-R13 rules on the generated openapi.yaml.
+# Pairs with scripts/check-swag-coverage.sh (which validates source-level
+# annotation coverage that spectral cannot see).
+#
+# Usage:
+#   npx @stoplight/spectral-cli@latest lint docs/openapi.yaml --ruleset .spectral.yaml
+
+extends:
+  - spectral:oas
+
+functions:
+  - octo-list-check
+
+functionsDir: ./functions
+
+aliases:
+  Operation:
+    - "$.paths[*][get,post,put,patch,delete]"
+
+rules:
+  # ============================================================
+  # Built-in rule overrides (from spectral:oas)
+  # ============================================================
+  # spectral:oas rules default to warn — bump key ones to error.
+  # Other built-in rules (operation-operationId-unique, operation-tags-alphabetical,
+  # etc.) remain at their default severity.
+  operation-operationId: error
+  operation-tags: error
+  operation-tag-defined: error
+  no-$ref-siblings: error
+
+  # ============================================================
+  # A. @Summary (R13)
+  # ============================================================
+  octo-summary-required:
+    description: Operation must have a summary (R13)
+    severity: error
+    given: "#Operation"
+    then:
+      field: summary
+      function: truthy
+
+  octo-summary-length-exceeded:
+    description: Summary must not exceed 80 characters (R13)
+    severity: error
+    given: "#Operation"
+    then:
+      field: summary
+      function: length
+      functionOptions:
+        max: 80
+
+  octo-summary-english-verb:
+    description: Summary should start with an English verb (capital letter)
+    severity: warn
+    given: "#Operation.summary"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[A-Z][a-zA-Z]"
+
+  # ============================================================
+  # C. @Tags (R10, R13)
+  # ============================================================
+  octo-tags-single:
+    description: Each operation must have exactly one tag (R13)
+    severity: error
+    given: "#Operation"
+    then:
+      field: tags
+      function: length
+      functionOptions:
+        min: 1
+        max: 1
+
+  octo-tags-lowercase:
+    description: Tag must be lowercase snake_case (R13)
+    severity: error
+    given: "#Operation.tags[*]"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9_]*$"
+
+  # ============================================================
+  # D. @ID / operationId (R10)
+  # ============================================================
+  octo-operation-id-format:
+    description: operationId must be <resource>.<verb> snake_case (R10)
+    severity: error
+    given: "#Operation"
+    then:
+      field: operationId
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,2}$"
+
+  # ============================================================
+  # E. URL Path (R6)
+  # ============================================================
+  octo-path-snake-case:
+    description: Path segments must be snake_case (R6)
+    severity: error
+    given: "$.paths"
+    then:
+      field: "@key"
+      function: pattern
+      functionOptions:
+        match: "^/[a-z0-9_/{}]+$"
+        notMatch: "[A-Z]"
+
+  octo-path-resource-singular:
+    description: Resource path segments should be plural (R6)
+    severity: warn
+    given: "$.paths"
+    then:
+      field: "@key"
+      function: octo-list-check
+      functionOptions:
+        mode: forbidden-segment
+        list:
+          - matter
+          - group
+          - user
+          - bot
+          - thread
+          - space
+          - message
+          - file
+          - event
+          - admin
+          - manager
+          - channel
+        message: "path segment is singular — use plural (R6)"
+
+  # ============================================================
+  # F. Path Parameters (R7)
+  # ============================================================
+  octo-path-param-id-suffix:
+    description: Path parameter must use <resource>_id naming (R7)
+    severity: error
+    given: "$.paths[*][*].parameters[?(@.in=='path')]"
+    then:
+      field: name
+      function: pattern
+      functionOptions:
+        match: "_id$"
+
+  octo-path-param-no-uid:
+    description: Path parameter must not use legacy naming (R7)
+    severity: error
+    given: "$.paths[*][*].parameters[?(@.in=='path')]"
+    then:
+      field: name
+      function: octo-list-check
+      functionOptions:
+        mode: forbidden
+        list:
+          - uid
+          - short_id
+          - group_no
+          - category_no
+          - robot_id
+        message: "path parameter uses legacy naming — see R7 for replacements"
+
+  # ============================================================
+  # G. @Success / @Failure with envelope (R1)
+  # ============================================================
+  # Status codes are listed explicitly because spectral's jsonpath
+  # implementation (jsonpath-plus) doesn't reliably support
+  # `responses[?(@property.match(...))]` for property-name filtering.
+  octo-response-uses-envelope:
+    description: |
+      All response schemas must reference an envelope type (Envelope/Data/
+      CursorList/OffsetList for 2xx, Error for 4xx/5xx). Implemented as a
+      single rule covering both because spectral's jsonpath does not
+      reliably distinguish 2xx vs 4xx response keys (R1).
+    severity: error
+    resolved: false      # required to keep `$ref` literal instead of resolving
+    given: "$.paths[*][*].responses[*].content[*].schema"
+    then:
+      field: "$ref"
+      function: octo-list-check
+      functionOptions:
+        mode: required-substring
+        list:
+          - Envelope
+          - Data
+          - CursorList
+          - OffsetList
+          - Error
+        message: "response $ref must reference envelope type (R1)"
+
+  # ============================================================
+  # H. @Security (R4)
+  # ============================================================
+  octo-auth-has-401:
+    description: Authenticated operations should declare 401 response (R4)
+    severity: warn
+    given: "$.paths[*][?(@.security)]"
+    then:
+      field: responses.401
+      function: truthy
+
+  octo-auth-has-403:
+    description: Authenticated operations should declare 403 response (R4)
+    severity: warn
+    given: "$.paths[*][?(@.security)]"
+    then:
+      field: responses.403
+      function: truthy
+
+  # ============================================================
+  # I. Schema field naming (R3, R8)
+  # ============================================================
+  octo-schema-property-snake-case:
+    description: Schema properties must be snake_case (R8)
+    severity: error
+    given: "$.components.schemas[*].properties[*]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "^[a-z][a-z0-9_]*$"
+        notMatch: "[A-Z]"
+
+  octo-schema-time-at-suffix:
+    description: Time fields (date-time format) should end with _at (R3)
+    severity: warn
+    given: "$.components.schemas[*].properties[?(@.format=='date-time')]~"
+    then:
+      function: octo-list-check
+      functionOptions:
+        mode: required-suffix
+        list:
+          - _at
+          - _date
+          - deadline
+        message: "time field should end with _at suffix (R3)"
+
+  octo-schema-url-suffix:
+    description: URL fields (uri format) should end with _url (R8)
+    severity: warn
+    given: "$.components.schemas[*].properties[?(@.format=='uri')]~"
+    then:
+      function: pattern
+      functionOptions:
+        match: "_url$"
+
+  octo-schema-boolean-prefix:
+    description: Boolean fields should start with is_/has_/can_ (R8)
+    severity: warn
+    given: "$.components.schemas[*].properties[?(@.type=='boolean')]~"
+    then:
+      function: octo-list-check
+      functionOptions:
+        mode: required-prefix
+        list:
+          - is_
+          - has_
+          - can_
+        message: "boolean field should start with is_/has_/can_ (R8)"
+
+  # ============================================================
+  # OpenAPI version (R9)
+  # ============================================================
+  octo-openapi-version:
+    description: OpenAPI document must be 3.1.x (R9)
+    severity: error
+    given: "$"
+    then:
+      field: openapi
+      function: pattern
+      functionOptions:
+        match: "^3\\.1\\."

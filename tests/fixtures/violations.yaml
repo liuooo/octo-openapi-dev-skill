@@ -1,0 +1,351 @@
+# Test fixture: deliberately violate every OCTO custom rule.
+# Each path/operation triggers a known rule. Used to verify spectral.yaml.
+#
+# Run: npx @stoplight/spectral-cli@latest lint tools/octo-api/test-fixtures/violations.yaml --ruleset tools/octo-api/spectral.yaml
+
+openapi: 3.0.0                                  # violation: octo-openapi-version (not 3.1.x)
+
+info:
+  title: Test Fixture
+  version: 1.0.0
+  description: deliberate violations
+
+components:
+  schemas:
+    Envelope_Data:                              # baseline envelope shape
+      type: object
+      properties:
+        data:
+          type: object
+    Envelope_Error:
+      type: object
+      properties:
+        error:
+          type: object
+    BadSchema:
+      type: object
+      properties:
+        userId:                                 # violation: octo-schema-property-snake-case (camelCase)
+          type: string
+        createdTime:                            # violation: octo-schema-time-at-suffix (missing _at)
+          type: string
+          format: date-time
+        avatar:                                 # violation: octo-schema-url-suffix (missing _url)
+          type: string
+          format: uri
+        active:                                 # violation: octo-schema-boolean-prefix (no is_/has_/can_)
+          type: boolean
+
+tags:
+  - name: matter
+    description: matter operations
+  - name: bot
+    description: bot operations
+
+paths:
+  # ----- @Summary violations -----
+  /no_summary:                                  # routine snake_case
+    get:
+      operationId: no_summary.get
+      tags: [matter]
+      # missing summary → octo-summary-required
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /long_summary:
+    get:
+      operationId: long_summary.get
+      summary: "This is an extremely long summary that exceeds the eighty character limit imposed by R13 rule"  # >80 → octo-summary-length-exceeded
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /lowercase_summary:
+    get:
+      operationId: lowercase_summary.get
+      summary: "get matter list"                # not capital first → octo-summary-english-verb
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- @Tags violations -----
+  /multi_tags:
+    get:
+      operationId: multi_tags.get
+      summary: List items
+      tags: [matter, bot]                       # → octo-tags-single
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /upper_tag:
+    get:
+      operationId: upper_tag.get
+      summary: List items
+      tags: [Matter]                            # → octo-tags-lowercase
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- @ID format violation -----
+  /bad_id:
+    get:
+      operationId: getMatters                   # camelCase, not <resource>.<verb> → octo-operation-id-format
+      summary: List matters
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- Path violations -----
+  /Users:                                       # camelCase path → octo-path-snake-case
+    get:
+      operationId: users.get
+      summary: List users
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /matter/{matter_id}:                          # singular "matter" → octo-path-resource-singular
+    get:
+      operationId: matter.get
+      summary: Get matter
+      tags: [matter]
+      parameters:
+        - name: matter_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- Path parameter violations -----
+  /matters/{matter_no}:                         # _no suffix → octo-path-param-no-uid (legacy)
+    get:                                        # also octo-path-param-id-suffix (no _id)
+      operationId: matters.bad_param
+      summary: Get matter by no
+      tags: [matter]
+      parameters:
+        - name: matter_no
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /matters/{uid}:                               # uid → octo-path-param-no-uid
+    get:
+      operationId: matters.uid_param
+      summary: Get matter by uid
+      tags: [matter]
+      parameters:
+        - name: uid
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- envelope violations -----
+  /raw_success:
+    get:
+      operationId: raw_success.get
+      summary: Returns raw data
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadSchema'   # not Envelope → octo-success-uses-envelope
+
+  /raw_error:
+    get:
+      operationId: raw_error.get
+      summary: Returns raw error
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+        '400':
+          description: bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BadSchema'   # not Error → octo-error-uses-envelope
+
+  # ----- Boundary cases -----
+  /empty_summary:                               # boundary: empty string is falsy → octo-summary-required
+    get:
+      operationId: empty_summary.get
+      summary: ""
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /summary_81_chars:                            # boundary: exactly 81 chars → length-exceeded
+    get:
+      operationId: summary_81_chars.get
+      summary: "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /zero_tags:                                   # boundary: empty array → tags-single (min)
+    get:
+      operationId: zero_tags.get
+      summary: List items
+      tags: []
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /three_tags:                                  # boundary: 3 tags → tags-single (max)
+    get:
+      operationId: three_tags.get
+      summary: List items
+      tags: [matter, bot, matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /opid_one_part:                               # boundary: 1-part operationId → operation-id-format
+    get:
+      operationId: matter
+      summary: List items
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /opid_four_parts:                             # boundary: 4-part operationId → operation-id-format
+    get:
+      operationId: a.b.c.d
+      summary: List items
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /groups/{group_id}/user/{user_id}:            # boundary: singular nested segment → path-resource-singular
+    get:
+      operationId: group.user.get
+      summary: Get user in group
+      tags: [matter]
+      parameters:
+        - name: group_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- Security violations -----
+  /auth_no_401:
+    get:
+      operationId: auth_no_401.get
+      summary: Authenticated but missing 401
+      tags: [matter]
+      security:
+        - Bearer: []
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+        # missing 401 → octo-auth-has-401
+        # missing 403 → octo-auth-has-403

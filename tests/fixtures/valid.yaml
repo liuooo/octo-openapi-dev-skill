@@ -1,0 +1,139 @@
+# Test fixture: a fully compliant OpenAPI 3.1 document.
+# Running spectral against this should produce zero errors (warnings about
+# missing contact/servers are also gone since both are populated).
+#
+# Run: npx @stoplight/spectral-cli@latest lint tools/octo-api/test-fixtures/valid.yaml --ruleset tools/octo-api/spectral.yaml
+
+openapi: 3.1.0
+
+info:
+  title: Octo Server API (test fixture)
+  version: 1.0.0
+  description: Sample valid spec for spectral rule regression
+  contact:
+    name: OCTO Team
+    email: support@octo.example
+  license:
+    name: Apache-2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0
+
+servers:
+  - url: https://api.octo.example/v1
+    description: Production
+
+tags:
+  - name: matter
+    description: matter operations
+
+components:
+  securitySchemes:
+    Bearer:
+      type: http
+      scheme: bearer
+  schemas:
+    MatterResp:
+      type: object
+      properties:
+        matter_id:
+          type: string
+        title:
+          type: string
+        is_active:                            # boolean prefix ✅
+          type: boolean
+        avatar_url:                           # URL suffix ✅
+          type: string
+          format: uri
+        created_at:                           # time _at suffix ✅
+          type: string
+          format: date-time
+    EnvelopeData:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MatterResp'
+    EnvelopeError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+paths:
+  # ----- Boundary pass cases -----
+  /summary_80_chars:                          # boundary: exactly 80 chars ✅
+    get:
+      operationId: summary_80_chars.get
+      summary: "Aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      description: Boundary case for summary length.
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
+  /matters/{matter_id}/assignees:             # nested plural segment ✅
+    get:
+      summary: List assignees on matter
+      description: List the assignees attached to a matter.
+      tags: [matter]
+      operationId: matter.assignee.list       # 3-part operationId (resource.sub.verb) ✅
+      parameters:
+        - name: matter_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
+  /matters/{matter_id}:                       # plural + _id suffix ✅
+    get:
+      summary: Get matter by id              # capital English verb ✅
+      description: Retrieve a single matter resource owned by the caller.
+      tags: [matter]                          # single lowercase tag ✅
+      operationId: matter.get                 # <resource>.<verb> ✅
+      security:
+        - Bearer: []                          # auth declared ✅
+      parameters:
+        - name: matter_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'   # envelope ✅
+        '401':                                # auth has-401 ✅
+          description: unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'  # error envelope ✅
+        '403':                                # auth has-403 ✅
+          description: forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+        '404':
+          description: not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'

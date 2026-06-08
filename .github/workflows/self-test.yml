@@ -1,0 +1,86 @@
+name: Self-test
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run skill self-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Lint skill structure
+        run: make lint
+
+      - name: Run self-test suite
+        run: make test
+
+  install-smoke:
+    name: install.sh smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # Copy the sample-api fixture into a clean working directory and init git
+      - name: Bootstrap sample-api as install target
+        run: |
+          cp -r tests/sample-api /tmp/sample-api
+          cd /tmp/sample-api
+          git init -q
+          git config user.email "ci@example.com"
+          git config user.name  "CI"
+          git add -A && git commit -q -m "bootstrap sample-api"
+
+      # Run installer pointing at this checkout (not network)
+      - name: Run install.sh from local checkout
+        run: |
+          cd /tmp/sample-api
+          OCTO_SKILL_REPO="file://$GITHUB_WORKSPACE" \
+          OCTO_SKILL_VERSION="$(cd $GITHUB_WORKSPACE && git rev-parse HEAD)" \
+            bash $GITHUB_WORKSPACE/install.sh <<< "y"
+
+      - name: Verify install layout
+        run: |
+          cd /tmp/sample-api
+          test -f tools/octo-api/SKILL.md
+          test -f tools/octo-api/assets/openapi.mk
+          test -x tools/octo-api/scripts/check-swag-coverage.sh
+          test -f tools/octo-api/.skill-version
+          grep -qF "include tools/octo-api/assets/openapi.mk" Makefile
+          echo "✅ install layout correct"
+
+      # Set up Go + run end-to-end: coverage / gen / lint
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Run make openapi-coverage on sample-api
+        run: cd /tmp/sample-api && make openapi-coverage
+
+      - name: Run make openapi-gen on sample-api
+        run: cd /tmp/sample-api && make openapi-gen
+
+      - name: Run make openapi-lint on sample-api
+        run: cd /tmp/sample-api && make openapi-lint
