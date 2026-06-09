@@ -60,9 +60,11 @@ include tools/octo-api/assets/openapi.mk
 | `docs.go` | swag 生成的 Go 注册器代码 —— 见下节"运行时暴露 /swagger endpoint" |
 | `index.html` | `make openapi-preview` 生成的本地预览，不 commit（加到 `.gitignore`）|
 
-## CI 集成
+## CI 集成（可选）
 
-`templates/openapi-workflow.yml` 是 CI 模板，复制到 `.github/workflows/openapi.yml` 后包含 6 道闸：
+是否上 CI 由项目决定。**本地 `make openapi-check` 已足够**保证质量；CI 是把闸搬到 GitHub 让 PR 强制跑。
+
+如要启用：`cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml`。包含 6 个 job：
 
 | Gate | 角色 | 阻塞 PR？ |
 |---|---|---|
@@ -70,10 +72,10 @@ include tools/octo-api/assets/openapi.mk
 | Swag Annotation Coverage | handler @Router 覆盖 | ✅ |
 | Generate & Verify OpenAPI 3.1 | swag 生成 + drift 检测 | ✅ |
 | Spectral Lint | 19 条 OCTO 规则 + spectral:oas | ✅ |
-| Breaking Change Check | PR diff vs base，写 step summary | ❌ informational |
+| Breaking Change Check | oasdiff 检测 breaking | ✅ on error |
 | Toolchain Self-Test | 工具链自身回归 | ✅ |
 
-repo admin 需把 4 个 ✅ 的 job + Changes 加入 branch ruleset 的 required check（详见 `adoption.md` Step 9）。
+repo admin 把 5 个 ✅ 的 job 加入 branch ruleset 的 required check 即生效（详见 `adoption.md` 可选增强）。
 
 ## 运行时暴露 /swagger endpoint（可选）
 

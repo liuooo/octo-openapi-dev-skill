@@ -47,21 +47,31 @@ OCTO_SKILL_TARGET=vendor/octo-api curl -fsSL .../install.sh | bash
 
 ---
 
-## 安装后还要做什么（9 项一次性配置）
+## 安装后还要做什么
 
-`install.sh` 只装了文件 + Makefile include。让工具链真正在仓库跑起来，**还要做 9 项手动配置**：
+`install.sh` 只装了文件 + Makefile include。让工具链真正在仓库跑起来，按以下两组配置：
 
-| # | 步骤 | 角色 | 命令 / 说明 |
-|---|---|---|---|
-| 1 | `main.go` 加 swag 全局注解 | 开发者 | `@title` / `@version` / `@host` / `@BasePath` / `@externalDocs.url` / Bearer 等 —— 模板见 `tools/octo-api/references/api-spec.md` E 章节末尾 |
-| 2 | 至少 1 个 handler 加完整 swag 注释 | 开发者 | 按 `tools/octo-api/SKILL.md` 1 章工作流走一遍 |
-| 3 | 复制 CI workflow | 开发者 | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
-| 4 | 复制 PR 模板 | 开发者 | `cp tools/octo-api/assets/templates/PR_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md` |
-| 5 | 生成首份 baseline | 开发者 | `make openapi-gen`（首次自动装 swag v2 CLI）|
-| 6 | 提交 baseline | 开发者 | `git add docs/openapi/ && git commit -m "chore: add openapi baseline"` |
-| 7 | 配置 branch protection（4 个 required check）| repo admin | repo Settings → Rules → Rulesets：`Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test` |
-| 8 | 验证接入 | 开发者 | `make openapi-check` 全过（**coverage 必须 100%**；存量大仓库见 `tools/octo-api/references/adoption.md` "存量仓库接入" 分阶段路径）|
-| 9 | 接入 AI 助手 | 按需 | 见下面 "AI 助手接入" |
+### 必做（5 项，让本地工具链可用）
+
+| # | 步骤 | 命令 / 说明 |
+|---|---|---|
+| 1 | `main.go` 加 swag 全局注解 | `@title` / `@version` / `@host` / `@BasePath` / `@externalDocs.url` / Bearer 等 —— 模板见 `tools/octo-api/references/api-spec.md` E 章节末尾 |
+| 2 | 至少 1 个 handler 加完整 swag 注释 | 按 `tools/octo-api/SKILL.md` 1 章工作流走一遍 |
+| 3 | 生成首份 baseline | `make openapi-gen`（首次自动装 swag v2 CLI）|
+| 4 | 提交 baseline | `git add docs/openapi/ && git commit -m "chore: add openapi baseline"` |
+| 5 | 验证接入 | `make openapi-check` 全过（**coverage 必须 100%**；存量大仓库见 `tools/octo-api/references/adoption.md` "存量仓库接入"）|
+
+做完 5 项 = 本地能跑 `make openapi-gen` / `check` / `diff` / `lint` 全套。
+
+### 可选增强（按需启用）
+
+| 项 | 何时做 | 命令 / 说明 |
+|---|---|---|
+| 接入 CI workflow | 想让 PR 自动跑 4 道闸 + breaking check | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
+| 合并 PR 模板片段 | 想让 PR 描述有 API Change 提示 | 把 `tools/octo-api/assets/templates/PR_TEMPLATE.md` 的 "API Changes" 段**合并**到现有 `.github/PULL_REQUEST_TEMPLATE.md`（**不要**直接覆盖，仓库通常已有 PR template）|
+| 配 branch protection（admin）| 想让 CI 失败时阻断 PR 合并 | repo Settings → Rules → Rulesets 加 required check：`Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test` |
+| release-drafter path filter（admin）| 用 release-drafter 时希望 spec 改动单独分类 | 配置把 `docs/openapi/swagger.*` 改动标 "API Change" 类别 |
+| AI 助手接入 | 想让 AI 自动按 SKILL 工作流写 endpoint | 见下面 "AI 助手接入" |
 
 跑通 `make openapi-check` 即接入成功。详细每一步见 `tools/octo-api/references/adoption.md`（安装后）。
 

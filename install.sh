@@ -146,7 +146,7 @@ cat <<EOF
   ${BOLD}Location:${NC}  $INSTALL_PATH/
 ═══════════════════════════════════════════════════════
 
-Next steps (one-time, manual):
+Required (make the local toolchain work):
 
   1. Add swag global annotations to main.go
      (template in $TARGET_DIR/references/api-spec.md, "全局 main.go 必带")
@@ -154,17 +154,18 @@ Next steps (one-time, manual):
   2. Add @Router + swag annotations to at least one handler
      (workflow in $TARGET_DIR/SKILL.md section 1)
 
-  3. Copy CI workflow + PR template:
-       mkdir -p .github/workflows
-       cp $TARGET_DIR/assets/templates/openapi-workflow.yml  .github/workflows/openapi.yml
-       cp $TARGET_DIR/assets/templates/PR_TEMPLATE.md         .github/PULL_REQUEST_TEMPLATE.md
-
-  4. Generate first baseline (auto-installs swag v2 CLI on first run):
+  3. Generate first baseline (auto-installs swag v2 CLI on first run):
        make openapi-gen
        git add docs/openapi/swagger.yaml docs/openapi/swagger.json docs/openapi/docs.go
        git commit -m "chore: add openapi baseline"
 
-  5. (admin) Configure branch protection — see $TARGET_DIR/references/adoption.md
+Optional (enable on demand — see references/adoption.md):
+
+  • CI workflow: cp $TARGET_DIR/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml
+  • PR template: merge the 'API Changes' block from $TARGET_DIR/assets/templates/PR_TEMPLATE.md
+                 into your existing .github/PULL_REQUEST_TEMPLATE.md (don't overwrite)
+  • branch protection (admin): mark CI jobs as required checks
+  • AI assistant: link tools/octo-api to ~/.claude/skills/ or 'openclaw skills install'
 
 Discover all commands:
 
