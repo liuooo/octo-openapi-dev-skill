@@ -42,6 +42,8 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 - 不把状态/枚举值塞路径里 —— 永远走 body 或 query
 - CRUD 用标准 HTTP 动词；**只有状态机**才用 RPC 动词（close / reopen / archive / extract）
 
+> **URL 设计层 vs swag `@Router` 写法**：上面表里的 URL 是**客户端实际请求**的形态（含 `/v1`）。但在 Go handler 的 `@Router` 注释里写**相对路径**（不含 `/v1`），由 main.go 的 `@BasePath /v1` 提供前缀。否则 swag v2 会让 servers + path 都含 `/v1` 导致 `/v1/v1/...` 重复。详见 E 章节"`@Router` 写法"。
+
 ### operationId 规则（R10）
 
 | 层数 | 格式 | 例 |
@@ -363,7 +365,12 @@ httperr.ResponseErrorL(c, errcode.ErrNotFound,
 | `@Param` | ✅（有参时）| 所有 path/query/body 参数都列 |
 | `@Success` | ✅ | 至少 1 个 + envelope 类型 |
 | `@Failure` | ✅（鉴权时）| 至少 401/403/404/500 |
-| `@Router` | ✅ | path + method |
+| `@Router` | ✅ | **相对路径**（不带 `/v1` 前缀）+ method —— 见下方"⚠️ @Router 写法" |
+
+> ⚠️ **`@Router` 写法**：swag v2 把 main.go 的 `@BasePath /v1` 转成 OpenAPI `servers: [{url: /v1}]`。如果 `@Router` 又写完整 `/v1/matters`，客户端实际请求会变成 `/v1/v1/matters`（重复）。
+>
+> **正确**：`@Router /matters/{matter_id} [delete]`（不含 `/v1`，由 `@BasePath` 提供）
+> **错误**：`@Router /v1/matters/{matter_id} [delete]`
 
 ### 完整模板
 
@@ -383,9 +390,11 @@ httperr.ResponseErrorL(c, errcode.ErrNotFound,
 // @Failure       403 {object} envelope.Error            "FORBIDDEN: not owner"
 // @Failure       404 {object} envelope.Error            "NOT_FOUND"
 // @Failure       429 {object} envelope.Error            "RATE_LIMITED"
-// @Router        /v1/matters/{matter_id} [delete]
+// @Router        /matters/{matter_id} [delete]
 func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 ```
+
+> 客户端实际请求是 `DELETE /v1/matters/{matter_id}`（servers `/v1` + path `/matters/{matter_id}` 拼接）。
 
 ### @Param 写法
 
@@ -636,7 +645,7 @@ type BatchCreateMattersResp struct {
 // @Deprecated    true
 // @Tags          matter
 // @ID            matter.create_legacy
-// @Router        /v1/matter [post]
+// @Router        /matter [post]
 // ... 其它标签照常
 func (h *MatterHandler) CreateLegacy(c *wkhttp.Context) { ... }
 ```

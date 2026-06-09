@@ -27,7 +27,7 @@ func New() *Handler { return &Handler{} }
 // @Failure       403 {object} envelope.Error            "FORBIDDEN"
 // @Failure       429 {object} envelope.Error            "RATE_LIMITED"
 // @Failure       500 {object} envelope.Error            "INTERNAL_ERROR"
-// @Router        /v1/matters [post]
+// @Router        /matters [post]
 func (h *Handler) Create(c *gin.Context) {
 	c.JSON(201, envelope.Data[MatterResp]{Data: MatterResp{}})
 }
@@ -45,7 +45,7 @@ func (h *Handler) Create(c *gin.Context) {
 // @Failure       401 {object} envelope.Error "AUTH_REQUIRED"
 // @Failure       403 {object} envelope.Error "FORBIDDEN"
 // @Failure       500 {object} envelope.Error "INTERNAL_ERROR"
-// @Router        /v1/matters [get]
+// @Router        /matters [get]
 func (h *Handler) List(c *gin.Context) {
 	c.JSON(200, envelope.CursorList[MatterResp]{})
 }
@@ -63,7 +63,7 @@ func (h *Handler) List(c *gin.Context) {
 // @Failure       403 {object} envelope.Error "FORBIDDEN"
 // @Failure       404 {object} envelope.Error "NOT_FOUND"
 // @Failure       500 {object} envelope.Error "INTERNAL_ERROR"
-// @Router        /v1/matters/{matter_id} [get]
+// @Router        /matters/{matter_id} [get]
 func (h *Handler) Get(c *gin.Context) {
 	c.JSON(200, envelope.Data[MatterResp]{Data: MatterResp{}})
 }
@@ -82,7 +82,7 @@ func (h *Handler) Get(c *gin.Context) {
 // @Failure       404 {object} envelope.Error "NOT_FOUND"
 // @Failure       429 {object} envelope.Error "RATE_LIMITED"
 // @Failure       500 {object} envelope.Error "INTERNAL_ERROR"
-// @Router        /v1/matters/{matter_id} [delete]
+// @Router        /matters/{matter_id} [delete]
 func (h *Handler) Delete(c *gin.Context) {
 	c.JSON(200, envelope.Data[envelope.EmptyResp]{Data: envelope.EmptyResp{}})
 }

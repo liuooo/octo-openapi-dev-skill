@@ -60,7 +60,8 @@ description: |
 
 | 要点 | 值 |
 |---|---|
-| URL | `DELETE /v1/matters/{matter_id}` |
+| 客户端实际 URL | `DELETE /v1/matters/{matter_id}` |
+| swag `@Router` 写法 | `/matters/{matter_id} [delete]`（**不含 `/v1`** —— 由 `@BasePath /v1` 提供前缀，否则 servers + path 双 `/v1` 会重复成 `/v1/v1/...`）|
 | operationId | `matter.delete` |
 | 成功 envelope | `envelope.Data[EmptyResp]` |
 | 失败 envelope | `envelope.Error` |
