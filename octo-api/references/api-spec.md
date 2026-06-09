@@ -21,6 +21,24 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 > **本节是设计建议，不是 lint 规则**。spectral 在 URL 上只 lint 字符级格式（`octo-path-snake-case`：路径段 snake_case），不会检查"该不该复数 / 前缀是否合理 / 该不该走中间件"。这些是 PR review 范畴，本节给判断框架。
 
+### 仓库 = 服务命名空间
+
+OCTO 是多服务架构，**每个模块仓库一个独立服务，各自一套 API 表面**，通过不同 base URL 路由（客户端走统一 `OCTO_API_BASE_URL` 网关分流）。仓库边界即服务命名空间边界：
+
+| 服务（仓库）| 主要资源 / 动作（示意，非穷尽）|
+|---|---|
+| `octo-server` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations 等 |
+| `octo-matter` | matters / `_extract`（LLM 抽取动作）|
+| `octo-smart-summary` | summaries / summary_templates / summary_schedules / summary_chat_candidates / summary_member_candidates / `_summary_infer` |
+| _未来新模块_ | 自有资源域，仓库自决 |
+
+**关键约束**：
+
+- **服务名不进 URL**。octo-matter 的 endpoint 是 `/v1/matters`，**不是** `/v1/matter-service/matters`；服务区分由 base URL 决定。
+- **跨服务同名资源 OK**。octo-server 跟 octo-matter 可同时有 `/v1/matters`，因为它们挂不同 base URL —— `https://api.octo/server/v1/matters` vs `https://api.octo/matter/v1/matters` —— 由网关 / 客户端按需路由。
+- **单服务内没有命名空间概念**。前缀段（`/v1/internal/...` `/v1/admin/...` 等）按下一节"四角色"判断属于 audience prefix / domain qualifier / 资源动作，**不是 namespace**。
+- 本规范**逐仓库适用**：每个 OCTO API 服务仓库都按此规范设计；规则在每个仓库 CI 独立跑。
+
 ### URL 段的四种角色
 
 OCTO URL 一般形态：
