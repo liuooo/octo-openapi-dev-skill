@@ -82,4 +82,10 @@ echo "Coverage:                ${PCT}%"
 echo
 echo "❌ Handlers missing @Router swag annotation:"
 echo "$MISSING" | sed 's/^/   - /'
+echo
+echo "💡 100% coverage is required. Options:"
+echo "   - Add @Router + swag annotations to the handlers above"
+echo "   - For brownfield repos (large legacy code), do NOT add"
+echo "     'Swag Annotation Coverage' to branch protection yet — see"
+echo "     references/adoption.md '存量仓库接入' for the phased path"
 exit 1

@@ -25,12 +25,29 @@ make openapi-check
 期望：
 
 ```
-✅ coverage 1/N（至少 1 个 handler 有 @Router）
+✅ coverage N/N（100%，每个 gin handler 都有 @Router 注释）
 ✅ verify 通过（spec 跟 git 同步）
 ✅ lint 通过（spectral 0 error）
 ```
 
 → 接入成功。
+
+> ⚠️ **coverage 必须 100%**。`check-swag-coverage.sh` 任一 handler 缺 `@Router` 就 fail，没有部分覆盖 / 阈值机制。空仓库（0 handler）天然过；存量大仓库需要先把全部 handler 注释完，见下面"存量仓库接入"。
+
+## 存量仓库接入（已有大量 handler 缺 @Router）
+
+新仓库装上就能 100% 覆盖（0/0 或 1/1）。存量大仓库（如 octo-server 444 handler）一次性注释完不现实，分阶段走：
+
+| 阶段 | 动作 |
+|---|---|
+| **1. 装工具但不进 required check** | 跑 install.sh 装 `tools/octo-api/`，但**不要**配置 branch protection 的 `Swag Annotation Coverage` required check |
+| **2. 看缺什么** | `make openapi-coverage` 输出所有缺 `@Router` 的 handler 清单 |
+| **3. 批量补注释** | 按 module 拆 PR，每个 PR 把一组 handler 都补完 swag 注释（参考 `SKILL.md` 1 章工作流，用 AI 助手批量做更快）|
+| **4. 持续跑** | 每个 PR 后 `make openapi-coverage` 看进度，逐步从 N/M 爬到 N/N |
+| **5. 100% 后启用 required check** | coverage 跑出 100%，repo admin 配 branch protection 加上 `Swag Annotation Coverage` |
+| **6. 同步装 baseline + 其它闸** | `make openapi-gen` 生成 baseline，commit；启用 lint / verify required check |
+
+期间 PR 仍能合（因为 coverage 没进 required check），不会卡所有人。等 100% 达成再启用，保证未来 PR 不退化。
 
 ## AI 工具部署（让 AI 用上本 skill）
 

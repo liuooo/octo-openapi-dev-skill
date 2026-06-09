@@ -61,7 +61,7 @@ OCTO_SKILL_TARGET=vendor/octo-api curl -fsSL .../install.sh | bash
 | 6 | 生成首份 baseline | 开发者 | `make openapi-gen` |
 | 7 | 提交 baseline | 开发者 | `git add docs/openapi/ && git commit -m "chore: add openapi baseline"` |
 | 8 | 配置 branch protection（4 个 required check）| repo admin | repo Settings → Rules → Rulesets：`Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test` |
-| 9 | 验证接入 | 开发者 | `make openapi-check` 全过 |
+| 9 | 验证接入 | 开发者 | `make openapi-check` 全过（**coverage 必须 100%**；存量大仓库见 `tools/octo-api/references/adoption.md` "存量仓库接入" 分阶段路径）|
 | 10 | 接入 AI 助手 | 按需 | 见下面 "AI 助手接入" |
 
 跑通 `make openapi-check` 即接入成功。详细每一步见 `tools/octo-api/references/adoption.md`（安装后）。
