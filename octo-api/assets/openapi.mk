@@ -31,7 +31,6 @@ openapi-help:
 	@echo "  make openapi-coverage  检查 handler 是否都有 @Router"
 	@echo "  make openapi-diff      跟 base ref diff，oasdiff 检测 breaking"
 	@echo "  make openapi-preview   本地生成 HTML 预览（Redoc）"
-	@echo "  make openapi-install   装 swag v2 CLI（pin $(SWAG_VERSION)）"
 	@echo ""
 	@echo "Docs: $(OCTO_API_DIR)/references/toolchain.md"
 

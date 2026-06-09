@@ -14,7 +14,8 @@
 | `make openapi-coverage` | 检查 handler 是否都有 `@Router` | 排查 coverage 失败 |
 | `make openapi-diff` | 跟 base ref（默认 origin/main）的 spec diff，识别 breaking | 修改现有 endpoint 后 |
 | `make openapi-preview` | gen + 用 Redoc 生成 `docs/openapi/index.html` 静态预览 | 本地想看渲染后的 API 文档 |
-| `make openapi-install` | 装 swag v2 CLI（pin v2.0.0-rc5） | 首次接入或 swag 缺失 |
+
+> swag v2 CLI 和 oasdiff CLI 由 `openapi-gen` / `openapi-diff` **首次跑时自动 `go install`**，用户不需要单独装。
 
 > 工具自身的回归测试（spectral 规则集 / JS function 单测 / coverage 脚本单测）由上游仓库 [octo-openapi-dev-skill](https://github.com/liuooo/octo-openapi-dev-skill) 维护和 CI 跑，**用户项目不需要本地执行**。
 

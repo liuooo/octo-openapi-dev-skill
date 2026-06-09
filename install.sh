@@ -148,26 +148,23 @@ cat <<EOF
 
 Next steps (one-time, manual):
 
-  1. Install Go dep:
-       go get github.com/swaggo/swag/v2
-
-  2. Add swag global annotations to main.go
+  1. Add swag global annotations to main.go
      (template in $TARGET_DIR/references/api-spec.md, "全局 main.go 必带")
 
-  3. Add @Router + swag annotations to at least one handler
+  2. Add @Router + swag annotations to at least one handler
      (workflow in $TARGET_DIR/SKILL.md section 1)
 
-  4. Copy CI workflow + PR template:
+  3. Copy CI workflow + PR template:
        mkdir -p .github/workflows
        cp $TARGET_DIR/assets/templates/openapi-workflow.yml  .github/workflows/openapi.yml
        cp $TARGET_DIR/assets/templates/PR_TEMPLATE.md         .github/PULL_REQUEST_TEMPLATE.md
 
-  5. Generate first baseline:
+  4. Generate first baseline (auto-installs swag v2 CLI on first run):
        make openapi-gen
        git add docs/openapi/swagger.yaml docs/openapi/swagger.json docs/openapi/docs.go
        git commit -m "chore: add openapi baseline"
 
-  6. (admin) Configure branch protection — see $TARGET_DIR/references/adoption.md step 9
+  5. (admin) Configure branch protection — see $TARGET_DIR/references/adoption.md
 
 Discover all commands:
 

@@ -47,22 +47,21 @@ OCTO_SKILL_TARGET=vendor/octo-api curl -fsSL .../install.sh | bash
 
 ---
 
-## 安装后还要做什么（10 项一次性配置）
+## 安装后还要做什么（9 项一次性配置）
 
-`install.sh` 只装了文件 + Makefile include。让工具链真正在仓库跑起来，**还要做 10 项手动配置**：
+`install.sh` 只装了文件 + Makefile include。让工具链真正在仓库跑起来，**还要做 9 项手动配置**：
 
 | # | 步骤 | 角色 | 命令 / 说明 |
 |---|---|---|---|
-| 1 | 装 swag 依赖 | 开发者 | `go get github.com/swaggo/swag/v2` |
-| 2 | `main.go` 加 swag 全局注解 | 开发者 | `@title` / `@version` / `@host` / `@BasePath` / `@externalDocs.url` / Bearer 等 —— 模板见 `tools/octo-api/references/api-spec.md` E 章节末尾 |
-| 3 | 至少 1 个 handler 加完整 swag 注释 | 开发者 | 按 `tools/octo-api/SKILL.md` 1 章工作流走一遍 |
-| 4 | 复制 CI workflow | 开发者 | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
-| 5 | 复制 PR 模板 | 开发者 | `cp tools/octo-api/assets/templates/PR_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md` |
-| 6 | 生成首份 baseline | 开发者 | `make openapi-gen` |
-| 7 | 提交 baseline | 开发者 | `git add docs/openapi/ && git commit -m "chore: add openapi baseline"` |
-| 8 | 配置 branch protection（4 个 required check）| repo admin | repo Settings → Rules → Rulesets：`Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test` |
-| 9 | 验证接入 | 开发者 | `make openapi-check` 全过（**coverage 必须 100%**；存量大仓库见 `tools/octo-api/references/adoption.md` "存量仓库接入" 分阶段路径）|
-| 10 | 接入 AI 助手 | 按需 | 见下面 "AI 助手接入" |
+| 1 | `main.go` 加 swag 全局注解 | 开发者 | `@title` / `@version` / `@host` / `@BasePath` / `@externalDocs.url` / Bearer 等 —— 模板见 `tools/octo-api/references/api-spec.md` E 章节末尾 |
+| 2 | 至少 1 个 handler 加完整 swag 注释 | 开发者 | 按 `tools/octo-api/SKILL.md` 1 章工作流走一遍 |
+| 3 | 复制 CI workflow | 开发者 | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
+| 4 | 复制 PR 模板 | 开发者 | `cp tools/octo-api/assets/templates/PR_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md` |
+| 5 | 生成首份 baseline | 开发者 | `make openapi-gen`（首次自动装 swag v2 CLI）|
+| 6 | 提交 baseline | 开发者 | `git add docs/openapi/ && git commit -m "chore: add openapi baseline"` |
+| 7 | 配置 branch protection（4 个 required check）| repo admin | repo Settings → Rules → Rulesets：`Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test` |
+| 8 | 验证接入 | 开发者 | `make openapi-check` 全过（**coverage 必须 100%**；存量大仓库见 `tools/octo-api/references/adoption.md` "存量仓库接入" 分阶段路径）|
+| 9 | 接入 AI 助手 | 按需 | 见下面 "AI 助手接入" |
 
 跑通 `make openapi-check` 即接入成功。详细每一步见 `tools/octo-api/references/adoption.md`（安装后）。
 
@@ -71,14 +70,17 @@ OCTO_SKILL_TARGET=vendor/octo-api curl -fsSL .../install.sh | bash
 ## 安装后能用的命令
 
 ```bash
+make openapi-help        # 列所有命令
 make openapi-check       # 4 道闸：coverage → verify → lint
 make openapi-gen         # 重生 docs/openapi/swagger.{yaml,json,docs.go}
 make openapi-lint        # spectral 校验
 make openapi-verify      # gen + drift 检测
 make openapi-coverage    # handler @Router 覆盖
-make openapi-diff        # 跟 base ref 的 spec diff，识别 breaking
-make openapi-install     # 装 swag v2 CLI
+make openapi-diff        # 跟 base ref diff，oasdiff 检测 breaking
+make openapi-preview     # 本地生成 HTML 预览（Redoc）
 ```
+
+> swag v2 CLI 和 oasdiff CLI 在首次 `make openapi-gen` / `make openapi-diff` 时自动 `go install`，不需要单独装。
 
 完整命令清单见 `tools/octo-api/references/toolchain.md`（安装后）。
 

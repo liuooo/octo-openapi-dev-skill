@@ -2,19 +2,18 @@
 
 把 `tools/octo-api/` 工具包落地到一个新 API 提供方仓库（如 `octo-matter` / `octo-smart-summary`）。一次性配置，完成后跑通 `make openapi-check` 即接入成功。
 
-## 一次性配置（9 项）
+## 一次性配置（8 项）
 
 | # | 步骤 | 角色 | 命令 / 说明 |
 |---|---|---|---|
 | 1 | 装工具包 | 开发者 | `curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-dev-skill/main/install.sh \| bash`（自动装到 `tools/octo-api/` + Makefile include）|
-| 2 | 装 swag 依赖 | 开发者 | `go get github.com/swaggo/swag/v2` |
-| 3 | 接入 CI workflow | 开发者 | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
-| 4 | 接入 PR 模板 | 开发者 | `cp tools/octo-api/assets/templates/PR_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md` |
-| 5 | `main.go` 加 swag 全局注解 | 开发者 | `@title` / `@version` / `@host` / `@BasePath` / Bearer 等 —— 模板见 `api-spec.md` E 章节末尾 "全局 main.go 必带" |
-| 6 | 至少一个 handler 加完整 swag 注释 | 开发者 | 按 `SKILL.md` 1 章工作流走一遍（解析需求 → URL → envelope → struct → 错误码 → swag → check）|
-| 7 | 生成 + 提交首份 baseline | 开发者 | `make openapi-gen` → `git add docs/openapi/swagger.{yaml,json,docs.go}` → commit |
-| 8 | 配置 branch protection | repo admin | repo Settings → Rules → Rulesets 加 4 个 required check：`Detect changed paths` / `Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test`（**不**包含 `Breaking Change Check` —— informational）|
-| 9 | release-drafter path filter | repo admin（可选）| 如果用 release-drafter，配置把 `docs/openapi/swagger.*` 改动标 "API Change" 类别 |
+| 2 | 接入 CI workflow | 开发者 | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
+| 3 | 接入 PR 模板 | 开发者 | `cp tools/octo-api/assets/templates/PR_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md` |
+| 4 | `main.go` 加 swag 全局注解 | 开发者 | `@title` / `@version` / `@host` / `@BasePath` / Bearer 等 —— 模板见 `api-spec.md` E 章节末尾 "全局 main.go 必带" |
+| 5 | 至少一个 handler 加完整 swag 注释 | 开发者 | 按 `SKILL.md` 1 章工作流走一遍（解析需求 → URL → envelope → struct → 错误码 → swag → check）|
+| 6 | 生成 + 提交首份 baseline | 开发者 | `make openapi-gen` → `git add docs/openapi/swagger.{yaml,json,docs.go}` → commit |
+| 7 | 配置 branch protection | repo admin | repo Settings → Rules → Rulesets 加 4 个 required check：`Detect changed paths` / `Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test`（**不**包含 `Breaking Change Check` —— informational）|
+| 8 | release-drafter path filter | repo admin（可选）| 如果用 release-drafter，配置把 `docs/openapi/swagger.*` 改动标 "API Change" 类别 |
 
 ## 验证接入
 
