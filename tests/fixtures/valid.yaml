@@ -98,6 +98,40 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeData'
 
+  /manager/backups:                           # namespace prefix + plural nested ✅
+    get:
+      summary: List backups
+      description: List backups under the manager namespace.
+      tags: [matter]
+      operationId: manager.backup.list
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
+  /admin/users/{user_id}:                     # admin namespace + plural + _id ✅
+    get:
+      summary: Get user via admin
+      description: Admin endpoint for fetching a user.
+      tags: [matter]
+      operationId: admin.user.get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
   /matters/{matter_id}:                       # plural + _id suffix ✅
     get:
       summary: Get matter by id              # capital English verb ✅

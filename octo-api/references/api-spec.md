@@ -44,6 +44,37 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 > **URL 设计层 vs swag `@Router` 写法**：上面表里的 URL 是**客户端实际请求**的形态（含 `/v1`）。但在 Go handler 的 `@Router` 注释里写**相对路径**（不含 `/v1`），由 main.go 的 `@BasePath /v1` 提供前缀。否则 swag v2 会让 servers + path 都含 `/v1` 导致 `/v1/v1/...` 重复。详见 E 章节"`@Router` 写法"。
 
+### 命名空间前缀（namespace prefix）
+
+不是所有 `/v1/` 下的一级路径段都是"资源"。OCTO 允许少量**命名空间词**作为功能分组前缀，免 R6 复数规则。命名空间下嵌套的资源段**仍须 R6 复数**。
+
+| 类型 | 例 | 是否走 R6 复数 |
+|---|---|---|
+| 资源 | `/v1/matters` / `/v1/groups` | ✅ 必须复数 |
+| 命名空间前缀 | `/v1/admin/...` / `/v1/manager/...` | ❌ 命名空间词本身可单数 |
+| 命名空间下的资源 | `/v1/manager/backups` / `/v1/admin/users` | ✅ 嵌套段仍须复数 |
+
+**保留命名空间词**（白名单，新增需改 spectral 规则）：
+
+| 词 | 语义 |
+|---|---|
+| `admin` | 管理后台接口（运营 / 客服侧）|
+| `manager` | 管理类操作（系统配置 / 备份等，不是单一资源）|
+| `internal` | 内部系统对内调用（非外部客户端可访问）|
+| `auth` | 认证 / 授权（登录 / token / 鉴权流程）|
+| `statistics` | 统计聚合接口（不是 CRUD 资源）|
+| `obo` | on-behalf-of 调用（代某用户执行）|
+| `common` | 公共能力（无资源主体）|
+| `search` | 搜索（不是资源 CRUD）|
+
+**反例**：
+
+| ❌ 错 | ✅ 对 | 原因 |
+|---|---|---|
+| `/v1/manager/backup` | `/v1/manager/backups` | 命名空间下的资源仍须复数 |
+| `/v1/admin/user/{id}` | `/v1/admin/users/{user_id}` | 嵌套段违反 R6 + R7 |
+| `/v1/dashboard/...` | 加入白名单或拆为资源 | 新命名空间词需先扩白名单 |
+
 ### operationId 规则（R10）
 
 | 层数 | 格式 | 例 |

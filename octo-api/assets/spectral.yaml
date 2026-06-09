@@ -112,6 +112,12 @@ rules:
         match: "^/[a-z0-9_/{}]+$"
         notMatch: "[A-Z]"
 
+  # Resource segments must be plural. Namespace prefix words (admin /
+  # manager / internal / auth / statistics / obo / common / search) are
+  # NOT resources — they're functional grouping and exempt from R6
+  # pluralization (see api-spec.md §A "命名空间前缀"). Only true resource
+  # singulars are listed here; resources nested under a namespace are
+  # still caught because they appear as path segments too.
   octo-path-resource-singular:
     description: Resource path segments should be plural (R6)
     severity: warn
@@ -131,9 +137,11 @@ rules:
           - message
           - file
           - event
-          - admin
-          - manager
           - channel
+          - backup
+          - assignee
+          - member
+          - notification
         message: "path segment is singular — use plural (R6)"
 
   # ============================================================
