@@ -23,7 +23,7 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 ### 仓库 = 服务命名空间
 
-OCTO 是多服务架构，**每个模块仓库一个独立服务，各自一套 API 表面**，通过不同 base URL 路由（客户端走统一 `OCTO_API_BASE_URL` 网关分流）。仓库边界即服务命名空间边界：
+OCTO 是多服务架构，**每个模块仓库一个独立服务，各自一套 API 表面**。客户端走统一 `OCTO_API_BASE_URL` 网关，由网关分流到对应 service。
 
 | 服务（仓库）| 主要资源 / 动作（示意，非穷尽）|
 |---|---|
@@ -32,12 +32,17 @@ OCTO 是多服务架构，**每个模块仓库一个独立服务，各自一套 
 | `octo-smart-summary` | summaries / summary/templates / summary/schedules / summary/chat_candidates / summary/member_candidates / summary/`_infer` |
 | _未来新模块_ | 自有资源域，仓库自决 |
 
-**关键约束**：
+**URL 一致性约束（不管网关怎么部署）**：
 
-- **服务名不进 URL**。octo-matter 的 endpoint 是 `/v1/matters`，**不是** `/v1/matter-service/matters`；服务区分由 base URL 决定。
-- **跨服务同名资源 OK**。octo-server 跟 octo-matter 可同时有 `/v1/matters`，因为它们挂不同 base URL —— `https://api.octo/server/v1/matters` vs `https://api.octo/matter/v1/matters` —— 由网关 / 客户端按需路由。
-- **单服务内没有命名空间概念**。前缀段（`/v1/internal/...` `/v1/admin/...` 等）按下一节"四角色"判断属于 audience prefix / domain qualifier / 资源动作，**不是 namespace**。
-- 本规范**逐仓库适用**：每个 OCTO API 服务仓库都按此规范设计；规则在每个仓库 CI 独立跑。
+- **`/v1/` 永远是 base URL 之后的第一段** —— 版本号位置不能被服务名挤后。`https://<host>/<service>/v1/<resource>` ❌（version 在第三段）；正确是 `https://<host>/v1/...` ✅
+- **服务名要么不进 URL，要么在 `/v1/` 之后**。两种合法形态：
+  - Flat（资源名跨服务唯一）：`https://api.octo/v1/matters` —— 网关按资源名路由到对应 service
+  - 服务段在 `/v1/` 之后：`https://api.octo/v1/matter/matters` —— 网关按第二段路由
+- **服务内部的 spec 永远写 `/v1/<resource>`**（不带服务段）。客户端看到的 `/v1/matter/...` 这种"服务段"是**网关层加的路由前缀**，不属于服务 spec 的范畴。
+- **单服务内没有命名空间概念**。前缀段（`/v1/internal/...` `/v1/admin/...`）按下一节"四角色"判断属 audience / domain / 动作，**不是 namespace**。
+- 本规范**逐仓库适用**：每个 OCTO API 服务仓库都按此规范设计自家 spec；规则在每仓库 CI 独立跑。
+
+> **历史拓扑警告**：现有 nginx 把 octo-matter 挂在 `/matter/` 下（早于 `/v1/`），加上 octo-matter 内部又用 `/api/v1/matters`，客户端看到 `/matter/api/v1/matters` 这种**三层冗余**，违反"`/v1/` 第一段"约束。属历史遗留拓扑（网关 + 服务双层定义），规范立场是迁移到 `/v1/matter/matters`（service 段在 `/v1/` 后）或 `/v1/matters`（flat 路由），不再保留 `/matter/api/v1/` 嵌套。
 
 ### URL 段的四种角色
 
