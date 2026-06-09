@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Run all self-tests for octo-openapi-skill.
+# Run all self-tests for octo-openapi-dev-skill.
 #
 # Used by:
 #   - `make test` locally
@@ -11,7 +11,7 @@ set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
 
 echo "═══════════════════════════════════════════════════════"
-echo "  octo-openapi-skill self-test suite"
+echo "  octo-openapi-dev-skill self-test suite"
 echo "═══════════════════════════════════════════════════════"
 echo
 

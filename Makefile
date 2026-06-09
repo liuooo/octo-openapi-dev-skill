@@ -1,4 +1,4 @@
-# octo-openapi-skill — tool development Makefile.
+# octo-openapi-dev-skill — tool development Makefile.
 #
 # For projects that ran `install.sh`, the installed skill provides its
 # own `openapi-*` targets via `tools/octo-api/assets/openapi.mk` — that
@@ -9,7 +9,7 @@
 .DEFAULT_GOAL := help
 
 help:
-	@echo "octo-openapi-skill — maintainer targets"
+	@echo "octo-openapi-dev-skill — maintainer targets"
 	@echo ""
 	@echo "  test    Run all self-tests (JS unit + spectral fixture regression + coverage script unit + valid clean test)"
 	@echo "  lint    Check octo-api/ file integrity (required files present + executable)"

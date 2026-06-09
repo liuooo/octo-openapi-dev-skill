@@ -1,6 +1,6 @@
 # OpenAPI schema check pipeline for Go API repositories.
 #
-# Installed by octo-openapi-skill (https://github.com/liuooo/octo-openapi-skill).
+# Installed by octo-openapi-dev-skill (https://github.com/liuooo/octo-openapi-dev-skill).
 # Copy this file to .github/workflows/openapi.yml in your repo.
 #
 # Six gates run on every PR targeting main or release/**:

@@ -6,7 +6,7 @@
 
 | # | 步骤 | 角色 | 命令 / 说明 |
 |---|---|---|---|
-| 1 | 装工具包 | 开发者 | `curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-skill/main/install.sh \| bash`（自动装到 `tools/octo-api/` + Makefile include）|
+| 1 | 装工具包 | 开发者 | `curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-dev-skill/main/install.sh \| bash`（自动装到 `tools/octo-api/` + Makefile include）|
 | 2 | 装 swag 依赖 | 开发者 | `go get github.com/swaggo/swag/v2` |
 | 3 | 接入 CI workflow | 开发者 | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
 | 4 | 接入 PR 模板 | 开发者 | `cp tools/octo-api/assets/templates/PR_TEMPLATE.md .github/PULL_REQUEST_TEMPLATE.md` |
@@ -56,7 +56,7 @@ openclaw skills install ./tools/octo-api
 openclaw skills install ./tools/octo-api --global
 ```
 
-> OpenClaw 不能直接 `openclaw skills install git:liuooo/octo-openapi-skill@main`，因为本仓库的 SKILL.md 在 `octo-api/` 子目录而不是根目录，OpenClaw git 安装要求 root 有 SKILL.md。所以用本地路径安装（指向 install.sh 装好的 `tools/octo-api/`）。
+> OpenClaw 不能直接 `openclaw skills install git:liuooo/octo-openapi-dev-skill@main`，因为本仓库的 SKILL.md 在 `octo-api/` 子目录而不是根目录，OpenClaw git 安装要求 root 有 SKILL.md。所以用本地路径安装（指向 install.sh 装好的 `tools/octo-api/`）。
 
 部署后 AI 接到"加 endpoint"等触发场景时，按 SKILL.md 工作流走，按需读 references/ 详细规则。两个框架可以同时安装，互不影响。
 

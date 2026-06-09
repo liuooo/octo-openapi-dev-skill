@@ -1,6 +1,6 @@
 # sample-api
 
-最小化的 Go API 项目，用作 octo-openapi-skill 的端到端测试 fixture。
+最小化的 Go API 项目，用作 octo-openapi-dev-skill 的端到端测试 fixture。
 
 **用途**：
 
@@ -18,10 +18,10 @@
 
 ```bash
 cd /tmp
-cp -r /path/to/octo-openapi-skill/tests/sample-api .
+cp -r /path/to/octo-openapi-dev-skill/tests/sample-api .
 cd sample-api
 git init -q && git add -A && git commit -q -m bootstrap
-bash /path/to/octo-openapi-skill/install.sh
+bash /path/to/octo-openapi-dev-skill/install.sh
 # 完成后：
 make openapi-check     # 应通过
 ```

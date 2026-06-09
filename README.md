@@ -1,4 +1,4 @@
-# octo-openapi-skill
+# octo-openapi-dev-skill
 
 OpenAPI / swag 接口治理工具链 + AI 助手知识包，供 OCTO 项目 Go API 仓库使用（octo-server / octo-matter / octo-smart-summary / 其它）。
 
@@ -16,7 +16,7 @@ OpenAPI / swag 接口治理工具链 + AI 助手知识包，供 OCTO 项目 Go A
 在 API 仓库根目录执行：
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-skill/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-dev-skill/main/install.sh | bash
 ```
 
 可选环境变量：
@@ -25,13 +25,13 @@ curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-skill/main/inst
 |---|---|---|
 | `OCTO_SKILL_VERSION` | `main` | 锁定 branch / tag / commit SHA |
 | `OCTO_SKILL_TARGET` | `tools/octo-api` | 自定义安装位置 |
-| `OCTO_SKILL_REPO` | `https://github.com/liuooo/octo-openapi-skill` | 自定义上游 |
+| `OCTO_SKILL_REPO` | `https://github.com/liuooo/octo-openapi-dev-skill` | 自定义上游 |
 
 示例：
 
 ```bash
 # 锁 commit
-OCTO_SKILL_VERSION=abc1234 curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-skill/main/install.sh | bash
+OCTO_SKILL_VERSION=abc1234 curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-dev-skill/main/install.sh | bash
 
 # 装到 vendor/ 而非 tools/
 OCTO_SKILL_TARGET=vendor/octo-api curl -fsSL .../install.sh | bash
@@ -112,17 +112,17 @@ OpenClaw 用**同款 [Anthropic Agent Skills 格式](https://docs.openclaw.ai/to
 - `<workspace>/skills/<name>/` — workspace 级，优先级最高
 - `~/.openclaw/skills/<name>/` — 全局级（加 `--global`）
 
-由于本仓库的 `SKILL.md` 在 `octo-api/` 子目录（不在 root），不能直接 `openclaw skills install git:liuooo/octo-openapi-skill@main`（git 安装期望 root 有 SKILL.md）。改用**本地路径安装**，两种用法：
+由于本仓库的 `SKILL.md` 在 `octo-api/` 子目录（不在 root），不能直接 `openclaw skills install git:liuooo/octo-openapi-dev-skill@main`（git 安装期望 root 有 SKILL.md）。改用**本地路径安装**，两种用法：
 
 ```bash
 # 方式 1（推荐，复用 install.sh 装好的 tools/octo-api/）
-curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-skill/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-dev-skill/main/install.sh | bash
 openclaw skills install ./tools/octo-api            # workspace 级
 openclaw skills install ./tools/octo-api --global   # 全局级
 
 # 方式 2（仅装 OpenClaw skill，不要工具集成）
-git clone https://github.com/liuooo/octo-openapi-skill
-openclaw skills install ./octo-openapi-skill/octo-api
+git clone https://github.com/liuooo/octo-openapi-dev-skill
+openclaw skills install ./octo-openapi-dev-skill/octo-api
 ```
 
 SKILL.md frontmatter `name: octo-api` 自动识别成 skill slug，无需 `--as`。OpenClaw 接到对应触发场景时自动激活。
@@ -132,7 +132,7 @@ SKILL.md frontmatter `name: octo-api` 自动识别成 skill slug，无需 `--as`
 ## 项目结构
 
 ```
-octo-openapi-skill/                    上游 skill 仓库
+octo-openapi-dev-skill/                    上游 skill 仓库
 ├── octo-api/                              ← 被 install.sh 复制到用户项目的 tools/octo-api/
 │   ├── SKILL.md                        AI skill 入口（含 frontmatter）
 │   ├── references/

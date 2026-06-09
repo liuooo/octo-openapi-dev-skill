@@ -14,7 +14,7 @@
 | `make openapi-diff` | 跟 base ref（默认 origin/main）的 spec diff，识别 breaking | 修改现有 endpoint 后 |
 | `make openapi-install` | 装 swag v2 CLI（pin v2.0.0-rc5） | 首次接入或 swag 缺失 |
 
-> 工具自身的回归测试（spectral 规则集 / JS function 单测 / coverage 脚本单测）由上游仓库 [octo-openapi-skill](https://github.com/liuooo/octo-openapi-skill) 维护和 CI 跑，**用户项目不需要本地执行**。
+> 工具自身的回归测试（spectral 规则集 / JS function 单测 / coverage 脚本单测）由上游仓库 [octo-openapi-dev-skill](https://github.com/liuooo/octo-openapi-dev-skill) 维护和 CI 跑，**用户项目不需要本地执行**。
 
 ## 可覆盖变量
 

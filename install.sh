@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# install.sh — install octo-openapi-skill into a Go API project.
+# install.sh — install octo-openapi-dev-skill into a Go API project.
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-skill/main/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/liuooo/octo-openapi-dev-skill/main/install.sh | bash
 #
 # Pin a specific branch / tag / commit:
 #   OCTO_SKILL_VERSION=v1.0 curl -fsSL ... | bash       # tag
@@ -22,7 +22,7 @@
 set -euo pipefail
 
 # --- config ---
-SKILL_REPO_URL="${OCTO_SKILL_REPO:-https://github.com/liuooo/octo-openapi-skill}"
+SKILL_REPO_URL="${OCTO_SKILL_REPO:-https://github.com/liuooo/octo-openapi-dev-skill}"
 SKILL_VERSION="${OCTO_SKILL_VERSION:-main}"
 TARGET_DIR="${OCTO_SKILL_TARGET:-tools/octo-api}"
 
@@ -45,7 +45,7 @@ PROJECT_DIR="$(pwd)"
 INSTALL_PATH="$PROJECT_DIR/$TARGET_DIR"
 
 echo "═══════════════════════════════════════════════════════"
-echo "  octo-openapi-skill installer"
+echo "  octo-openapi-dev-skill installer"
 echo "═══════════════════════════════════════════════════════"
 echo "  Source:     $SKILL_REPO_URL"
 echo "  Ref:        $SKILL_VERSION"
@@ -127,11 +127,11 @@ if [ -f Makefile ] && grep -qF "$MAKEFILE_LINE" Makefile; then
   ok "Makefile already includes openapi.mk — skipping"
 else
   if [ -f Makefile ]; then
-    printf '\n# OpenAPI toolchain (installed by octo-openapi-skill %s)\n%s\n' "$SKILL_VERSION" "$MAKEFILE_LINE" >> Makefile
+    printf '\n# OpenAPI toolchain (installed by octo-openapi-dev-skill %s)\n%s\n' "$SKILL_VERSION" "$MAKEFILE_LINE" >> Makefile
     ok "appended openapi.mk include to Makefile"
   else
     cat > Makefile <<EOF
-# OpenAPI toolchain (installed by octo-openapi-skill $SKILL_VERSION)
+# OpenAPI toolchain (installed by octo-openapi-dev-skill $SKILL_VERSION)
 $MAKEFILE_LINE
 EOF
     ok "created Makefile with openapi.mk include"
@@ -142,7 +142,7 @@ echo
 # --- next steps ---
 cat <<EOF
 ═══════════════════════════════════════════════════════
-  ${BOLD}Installed${NC} octo-openapi-skill ($SKILL_VERSION @ $RESOLVED_SHA)
+  ${BOLD}Installed${NC} octo-openapi-dev-skill ($SKILL_VERSION @ $RESOLVED_SHA)
   ${BOLD}Location:${NC}  $INSTALL_PATH/
 ═══════════════════════════════════════════════════════
 

@@ -1,6 +1,6 @@
 // Package main is the sample-api fixture's entry point.
 //
-// @title Sample API for octo-openapi-skill
+// @title Sample API for octo-openapi-dev-skill
 // @version 1.0.0
 // @description Minimal fixture used to validate the skill toolchain end-to-end.
 // @host api.example.com
@@ -11,9 +11,9 @@
 // @in header
 // @name Authorization
 // @externalDocs.description Source repository
-// @externalDocs.url https://github.com/liuooo/octo-openapi-skill
-// @contact.name octo-openapi-skill maintainers
-// @contact.url https://github.com/liuooo/octo-openapi-skill
+// @externalDocs.url https://github.com/liuooo/octo-openapi-dev-skill
+// @contact.name octo-openapi-dev-skill maintainers
+// @contact.url https://github.com/liuooo/octo-openapi-dev-skill
 package main
 
 import "github.com/gin-gonic/gin"
