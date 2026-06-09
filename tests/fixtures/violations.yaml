@@ -138,25 +138,6 @@ paths:
               schema:
                 $ref: '#/components/schemas/Envelope_Data'
 
-  /matter/{matter_id}:                          # singular "matter" → octo-path-resource-singular
-    get:
-      operationId: matter.get
-      summary: Get matter
-      tags: [matter]
-      parameters:
-        - name: matter_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ok
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope_Data'
-
   # ----- Path parameter violations -----
   /matters/{matter_no}:                         # _no suffix → octo-path-param-no-uid (legacy)
     get:                                        # also octo-path-param-id-suffix (no _id)
@@ -299,66 +280,6 @@ paths:
     get:
       operationId: a.b.c.d
       summary: List items
-      tags: [matter]
-      responses:
-        '200':
-          description: ok
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope_Data'
-
-  /groups/{group_id}/user/{user_id}:            # boundary: singular nested segment → path-resource-singular
-    get:
-      operationId: group.user.get
-      summary: Get user in group
-      tags: [matter]
-      parameters:
-        - name: group_id
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: user_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ok
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope_Data'
-
-  # No namespace exemption: functional prefixes are R6 violations.
-  # "manager" / "admin" / "internal" / "auth" are NOT exempt — they're
-  # singular non-resource words and must not appear in path. Use
-  # middleware for permission/auth/internal scoping, not URL prefix.
-  /manager/backup/{backup_id}:                  # singular "manager" + singular "backup" → path-resource-singular
-    get:
-      operationId: manager.backup.get
-      summary: Get backup
-      tags: [matter]
-      parameters:
-        - name: backup_id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: ok
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Envelope_Data'
-
-  /admin/users:                                 # singular "admin" prefix → path-resource-singular
-    get:
-      operationId: admin.user.list
-      summary: List users via admin
       tags: [matter]
       responses:
         '200':

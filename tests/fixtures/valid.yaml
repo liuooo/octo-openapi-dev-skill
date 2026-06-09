@@ -78,6 +78,71 @@ paths:
               schema:
                 $ref: '#/components/schemas/EnvelopeData'
 
+  # Four-role URL framework: rule allows all of these (no resource-singular
+  # check). PR review judges design appropriateness per api-spec.md §A.
+
+  /internal/notifications:                    # audience prefix + resource ✅
+    get:
+      summary: List internal notifications
+      description: Internal-only endpoint for service-to-service notifications.
+      tags: [matter]
+      operationId: internal.notification.list
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
+  /obo/grants:                                # domain qualifier + resource ✅
+    get:
+      summary: List OBO grants
+      description: List on-behalf-of authorization grants.
+      tags: [matter]
+      operationId: obo.grant.list
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
+  /manager/backups:                           # audience prefix + resource ✅
+    get:
+      summary: List system backups
+      description: Management surface for system backup operations.
+      tags: [matter]
+      operationId: manager.backup.list
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
+  /admin/users/{user_id}:                     # audience prefix + resource + id ✅
+    get:
+      summary: Get user via admin
+      description: Admin-only user view with extended audit metadata.
+      tags: [matter]
+      operationId: admin.user.get
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+
   /matters/{matter_id}/assignees:             # nested plural segment ✅
     get:
       summary: List assignees on matter

@@ -35,7 +35,6 @@ expected = {
     ("octo-tags-lowercase",          "/upper_tag"),
     ("octo-operation-id-format",     "/bad_id"),
     ("octo-path-snake-case",         "/Users"),
-    ("octo-path-resource-singular",  "/matter/{matter_id}"),
     ("octo-path-param-id-suffix",    "/matters/{matter_no}"),
     ("octo-path-param-no-uid",       "/matters/{uid}"),
     ("octo-response-uses-envelope",  "/raw_success"),
@@ -48,9 +47,6 @@ expected = {
     ("octo-tags-single",             "/three_tags"),
     ("octo-operation-id-format",     "/opid_one_part"),
     ("octo-operation-id-format",     "/opid_four_parts"),
-    ("octo-path-resource-singular",  "/groups/{group_id}/user/{user_id}"),
-    ("octo-path-resource-singular",  "/manager/backup/{backup_id}"),  # singular non-resource prefix
-    ("octo-path-resource-singular",  "/admin/users"),                 # singular non-resource prefix
 }
 
 # Rules that fire on schema fields (not path endpoints)

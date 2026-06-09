@@ -99,8 +99,13 @@ rules:
         match: "^[a-z][a-z0-9_]*(\\.[a-z][a-z0-9_]*){1,2}$"
 
   # ============================================================
-  # E. URL Path (R6)
+  # E. URL Path (R6, format only)
   # ============================================================
+  # The spec gives URL design guidance in api-spec.md §A — four segment
+  # roles (resource / domain qualifier / audience prefix / resource action),
+  # plurality conventions, anti-patterns. These are SUGGESTIONS, enforced
+  # by PR review, not by lint. The only thing the rule checks here is
+  # purely syntactic: path segments are snake_case.
   octo-path-snake-case:
     description: Path segments must be snake_case (R6)
     severity: error
@@ -111,42 +116,6 @@ rules:
       functionOptions:
         match: "^/[a-z0-9_/{}]+$"
         notMatch: "[A-Z]"
-
-  # All path segments are resources and must be plural (R6). There is NO
-  # "namespace" concept within a single service — true namespaces live at
-  # the repository boundary (separate module repos under Mininglamp-OSS).
-  # Functional prefixes like /manager, /admin, /internal, /auth are NOT
-  # exempt — express permission / audit / internal scoping via middleware,
-  # not URL prefix.
-  octo-path-resource-singular:
-    description: Resource path segments should be plural (R6)
-    severity: warn
-    given: "$.paths"
-    then:
-      field: "@key"
-      function: octo-list-check
-      functionOptions:
-        mode: forbidden-segment
-        list:
-          - matter
-          - group
-          - user
-          - bot
-          - thread
-          - space
-          - message
-          - file
-          - event
-          - channel
-          - admin
-          - manager
-          - internal
-          - auth
-          - backup
-          - assignee
-          - member
-          - notification
-        message: "path segment is singular — use plural (R6)"
 
   # ============================================================
   # F. Path Parameters (R7)

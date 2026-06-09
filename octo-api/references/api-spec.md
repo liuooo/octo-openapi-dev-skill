@@ -19,48 +19,88 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 设计 endpoint 的 URL 路径和 operationId 时按本章。
 
-### URL 模板（R6）
+> **本节是设计建议，不是 lint 规则**。spectral 在 URL 上只 lint 字符级格式（`octo-path-snake-case`：路径段 snake_case），不会检查"该不该复数 / 前缀是否合理 / 该不该走中间件"。这些是 PR review 范畴，本节给判断框架。
 
-| 场景 | 模板 | HTTP 方法 |
-|---|---|---|
-| 创建资源 | `/v1/<resource_plural>` | POST |
-| 列表 | `/v1/<resource_plural>` | GET |
-| 获取单个 | `/v1/<resource_plural>/{<resource>_id}` | GET |
-| 更新（部分） | `/v1/<resource_plural>/{<resource>_id}` | PATCH |
-| 更新（整体） | `/v1/<resource_plural>/{<resource>_id}` | PUT |
-| 删除 | `/v1/<resource_plural>/{<resource>_id}` | DELETE |
-| 状态机动作 | `/v1/<resource_plural>/{<resource>_id}/<verb>` | POST |
-| 子资源 | `/v1/<parent_plural>/{parent_id}/<child_plural>[/{child_id}]` | 按 CRUD |
-| 批量 | `/v1/<resource_plural>/_batch` | POST |
+### URL 段的四种角色
 
-### 规则要点（R6）
+OCTO URL 一般形态：
 
-- 路径段一律 **snake_case**，禁 camelCase / PascalCase
-- 资源名一律 **复数**（matters / users / groups），禁单数
+```
+/v1/[<audience>/][<domain>/]<resource_plural>[/{id}][/<sub_plural>...][/_action]
+```
+
+四种段角色（可叠加，每种最多一段）：
+
+| 角色 | 形态 | 作用 | 例 |
+|---|---|---|---|
+| **资源**（resource） | 复数 snake_case | 核心 entity | `/v1/users` `/v1/matters` |
+| **域限定**（domain qualifier） | 单数 / 复数均可 | 紧跟资源时，资源名脱离域就歧义 | `/v1/obo/grants` `/v1/auth/sessions` `/v1/oidc/clients` |
+| **受众标记**（audience prefix） | 单数 / 复数均可 | 声明 API 契约的消费方（SLA / 文档可见性 / 网关路由）| `/v1/internal/notifications` `/v1/admin/users` |
+| **资源动作**（resource action） | `_` 前缀 | 非 CRUD 动词 | `/v1/users/_search` `/v1/matters/_batch` |
+
+URL 例：
+- `/v1/users` —— 纯资源
+- `/v1/users/_search` —— 资源 + 动作
+- `/v1/obo/grants` —— 域限定 + 资源
+- `/v1/internal/notifications` —— 受众 + 资源
+- `/v1/internal/auth/sessions/{session_id}` —— 受众 + 域限定 + 资源 + id（罕见但合法）
+
+### URL 段判断 heuristic
+
+**1. 资源**：复数，snake_case，紧跟版本或前缀段。
+
+OCTO 已知资源**建议复数形态**（参考用，**非穷尽，新模块自扩**）：
+
+```
+matters / users / groups / bots / threads / spaces / messages / files
+channels / events / backups / assignees / members / notifications
+sessions / grants / scopes / clients / tokens / app_bots / robots
+integrations / reports / reactions / friends / apps / webhooks
+```
+
+⚠️ doc 反例：`/v1/user`、`/v1/matter/{id}`、`/v1/app_bot`、`/v1/conversation` —— 已知 OCTO 资源单数化。
+
+**2. 域限定**（domain qualifier）：
+
+> **把前缀拿掉，剩下的资源名在 OCTO 范围内还能唯一定位语义吗？**
+> - 能 → 不需要前缀
+> - 不能 → 需要 domain qualifier
+
+例：
+- `/v1/obo/grants` ✅ —— `grants` 单独看歧义（OAuth / RBAC / 文件权限）
+- `/v1/auth/sessions` ✅ —— `sessions` 单独看歧义（用户 / 语音 / 认证）
+- `/v1/oidc/clients` ✅ —— `clients` 单独看歧义
+
+**3. 受众标记**（audience prefix）：
+
+> **API 契约对不同消费方是否本质不同？**（SLA / breaking change policy / 文档可见性 / SDK 生成与否）
+> - 是 → 用 audience prefix
+> - 否 → 走中间件 / header，不进 URL
+
+例：
+- `/v1/internal/notifications` ✅ —— internal 与外部 API 是不同契约（不公开 SLA、可破坏性变更）
+- `/v1/admin/users` ✅ —— 若 admin view 返回字段集 / 审计 / 文档分类与端用户 API 实际不同
+- `/v1/admin/users` ⚠️ —— 若只是 admin 权限多读写几个字段、同一文档同一 SDK，走中间件
+- `/v1/manager/backups` ✅ —— `backups` 是后台专属概念，audience 同时具备 domain 含义
+
+**4. 资源动作**：非 CRUD 动词，`_` 前缀紧跟资源段。
+
+例：`/v1/matters/_batch`、`/v1/users/_search`、`/v1/matters/{id}/close`（状态机用 RPC verb 不加 `_`）
+
+### 通用要点（R6）
+
+- 路径段一律 **snake_case**，禁 camelCase / PascalCase —— **规则 lint**
+- 资源名**建议复数**（matters / users / groups），单数化是 doc 反例 ⚠️ —— 规则不报
 - URL 一律以 `/v1/` 开头（R12 — 当前阶段唯一版本）
-- 嵌套层级 ≤ 3 级（含 `/v1/` 起算）
-- 不把状态/枚举值塞路径里 —— 永远走 body 或 query
+- 嵌套层级建议 ≤ 3 级（含 `/v1/` 起算）
+- 状态 / 枚举值不进路径 —— 走 body 或 query
 - CRUD 用标准 HTTP 动词；**只有状态机**才用 RPC 动词（close / reopen / archive / extract）
 
-> **URL 设计层 vs swag `@Router` 写法**：上面表里的 URL 是**客户端实际请求**的形态（含 `/v1`）。但在 Go handler 的 `@Router` 注释里写**相对路径**（不含 `/v1`），由 main.go 的 `@BasePath /v1` 提供前缀。否则 swag v2 会让 servers + path 都含 `/v1` 导致 `/v1/v1/...` 重复。详见 E 章节"`@Router` 写法"。
+> **URL 设计层 vs swag `@Router` 写法**：上面 URL 是**客户端实际请求**的形态（含 `/v1`）。但 Go handler 的 `@Router` 注释里写**相对路径**（不含 `/v1`），由 main.go 的 `@BasePath /v1` 提供前缀。否则 swag v2 会让 servers + path 都含 `/v1` 导致 `/v1/v1/...` 重复。详见 E 章节"`@Router` 写法"。
 
-### URL 只编码资源（没有"命名空间前缀"概念）
+### 存量改造
 
-**单一服务内所有路径段都是资源，全部走 R6 复数规则**。真正的"命名空间"在**仓库边界** —— Mininglamp-OSS 下独立的模块仓库（`octo-server` / `octo-matter` / `octo-cli` 等）才是不同的命名空间，各服务通过 `OCTO_API_BASE_URL` 路由分流。**单仓库内没有命名空间概念。**
-
-不要用 URL 前缀表达非资源语义：
-
-| 想表达的 | ❌ 路径前缀（错）| ✅ 正确做法 |
-|---|---|---|
-| 权限分级（管理后台 / 普通用户）| `/v1/admin/...` / `/v1/manager/...` | 同一资源 URL（`/v1/backups/...`）+ 鉴权中间件按角色放行 |
-| 内部接口 / 外部分离 | `/v1/internal/...` | `X-Internal-Token` 等头部 + 路由中间件，不进 URL |
-| 认证流程 | `/v1/auth/login` | `POST /v1/sessions`（创建会话作为资源动作）|
-| 代某人执行 | `/v1/obo/...` | request body 或 header 带 `on_behalf_of=<user_id>` |
-| 聚合 / 搜索 | `/v1/statistics/...` / `/v1/search/...` | `/v1/<resource>/_search`、`/v1/<resource>/aggregations` 等资源动作 |
-
-`admin` / `manager` / `internal` / `auth` 等词在 `octo-path-resource-singular` 的禁单数 list 里，写在路径里会报 R6 错。修法：按上表迁移到"资源 + 中间件"的表达，**不要**靠豁免绕过规则。
-
-> **存量改造**：仓库历史路径含此类前缀的（如 `/v1/manager/backup/{id}`），属 R6 历史债，按模块逐步改造 —— 见 `adoption.md` "存量仓库接入"。
+仓库历史路径含 `/v1/manager/...`、`/v1/admin/...` 等 audience 前缀但本质只做权限分流的（如 `/v1/manager/spaces` 跟 `/v1/spaces` 实际同契约），按模块逐步迁移到"资源 + 中间件"。详见 `adoption.md` "存量仓库接入"。
 
 ### operationId 规则（R10）
 
@@ -75,19 +115,32 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 - verb 用动词原形（add / remove / create / list / get / update / delete）
 - 跟 swag `@ID` 标签的值完全一致
 
-### 反模式（PR 拒绝项）
+### 反模式
 
-| ❌ 错 | ✅ 对 | 违反 |
+⚠️ doc 反例（设计建议、PR review 拦截）：
+
+| ⚠️ doc 反例 | ✅ 建议 | 备注 |
 |---|---|---|
-| `/sendMessage` | `POST /v1/messages` | R6 camelCase + 纯动词 URL |
-| `/matter/{id}` | `/matters/{matter_id}` | R6 单数 + R7 裸 id |
-| `/matters/{uid}` | `/matters/{matter_id}` | R7 历史命名（uid / short_id / *_no 全禁）|
-| `/spaces/{id}/status/{status}` | `PATCH /v1/spaces/{id}` body 带 status | R6 参数塞路径 |
-| `/a/{1}/b/{2}/c/{3}/d/{4}` | 拆独立资源 | R6 嵌套 > 3 级 |
-| `getMatters` (operationId) | `matter.list` | R10 camelCase |
-| `matter_create` | `matter.create` | R10 用 `_` 当分隔符 |
-| `matter` (1 层) | `matter.<verb>` | R10 必须至少 2 层 |
-| `a.b.c.d` (4 层) | 拆动作或合并 | R10 不超过 3 层 |
+| `/v1/matter/{id}` | `/v1/matters/{matter_id}` | R6 资源单数 + R7 裸 id |
+| `/v1/manager/backup/{id}` | `/v1/manager/backups/{backup_id}` | 嵌套资源单数 |
+| `/v1/manager/adduser` | `POST /v1/manager/users` | 动词进 URL |
+| `/v1/common/appconfig` | `/v1/app_configs` | "common" 不表 audience / domain |
+| `/v1/admin/users`（同契约）| `/v1/users` + 鉴权中间件 | audience 仅做权限分流，无契约差 |
+| `/v1/manager/login` | `POST /v1/auth/sessions` 或单独 `/v1/auth/login` | 认证流程跑错 audience |
+| `/v1/spaces/{id}/status/{status}` | `PATCH /v1/spaces/{id}` body 带 status | 参数塞路径 |
+| `/a/{1}/b/{2}/c/{3}/d/{4}` | 拆独立资源 | 嵌套 > 3 级 |
+
+❌ 规则违例（lint 阻断）：
+
+| ❌ 错 | ✅ 对 | 触发规则 |
+|---|---|---|
+| `/sendMessage` | `POST /v1/messages` | `octo-path-snake-case` |
+| `/Users` | `/users` | `octo-path-snake-case` |
+| `/matters/{uid}` | `/matters/{matter_id}` | `octo-path-param-no-uid` + `octo-path-param-id-suffix` |
+| `/matters/{matter_no}` | `/matters/{matter_id}` | 同上 |
+| `getMatters` (operationId) | `matter.list` | `octo-operation-id-format` |
+| `matter_create` | `matter.create` | 同上（`_` 当分隔符）|
+| `matter` (1 层) / `a.b.c.d` (4 层) | `matter.<verb>` / 拆 | 同上（层数）|
 
 ### 速查例
 
