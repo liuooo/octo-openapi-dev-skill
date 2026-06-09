@@ -12,6 +12,7 @@
 | `make openapi-verify` | gen + drift 检测 | 单独验证 spec 跟 git 同步 |
 | `make openapi-coverage` | 检查 handler 是否都有 `@Router` | 排查 coverage 失败 |
 | `make openapi-diff` | 跟 base ref（默认 origin/main）的 spec diff，识别 breaking | 修改现有 endpoint 后 |
+| `make openapi-preview` | gen + 用 Redoc 生成 `docs/openapi/index.html` 静态预览 | 本地想看渲染后的 API 文档 |
 | `make openapi-install` | 装 swag v2 CLI（pin v2.0.0-rc5） | 首次接入或 swag 缺失 |
 
 > 工具自身的回归测试（spectral 规则集 / JS function 单测 / coverage 脚本单测）由上游仓库 [octo-openapi-dev-skill](https://github.com/liuooo/octo-openapi-dev-skill) 维护和 CI 跑，**用户项目不需要本地执行**。
@@ -55,6 +56,7 @@ include tools/octo-api/assets/openapi.mk
 | 输出目录 | `docs/openapi/`（机器生成产物，跟人工写的 `docs/*.md` 不混）|
 | spec 文件 | `swagger.yaml` / `swagger.json` —— swag 工具的硬编码命名，**内容是 OpenAPI 3.1**（非 Swagger 2.0）|
 | `docs.go` | swag 生成的 Go 注册器代码 —— 见下节"运行时暴露 /swagger endpoint" |
+| `index.html` | `make openapi-preview` 生成的本地预览，不 commit（加到 `.gitignore`）|
 
 ## CI 集成
 

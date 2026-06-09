@@ -50,6 +50,7 @@ openapi-coverage:
 openapi-gen: openapi-install
 	$(SWAG) init -g main.go -d ./ -o $(OPENAPI_OUT_DIR) --v3.1
 	@bash $(OCTO_API_DIR)/scripts/normalize-spec.sh $(OPENAPI_OUT_DIR)
+	@echo "💡 Tip: 'make openapi-preview' renders the spec to a local HTML page."
 
 # ----------------------------------------------------------------------
 # Verify: regenerate spec and assert no drift vs committed baseline.
@@ -85,4 +86,14 @@ openapi-check: openapi-coverage openapi-verify openapi-lint
 openapi-diff: openapi-gen
 	@bash $(OCTO_API_DIR)/scripts/diff-openapi.sh $(BASE_REF)
 
-.PHONY: openapi-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff
+# ----------------------------------------------------------------------
+# Build a standalone HTML preview of the spec using Redoc.
+# Output is throwaway — add $(OPENAPI_OUT_DIR)/index.html to .gitignore.
+# ----------------------------------------------------------------------
+openapi-preview: openapi-gen
+	@npx -y @redocly/cli@latest build-docs $(OPENAPI_OUT_DIR)/swagger.yaml \
+	  -o $(OPENAPI_OUT_DIR)/index.html
+	@echo ""
+	@echo "✓ open $(OPENAPI_OUT_DIR)/index.html (macOS: open …; Linux: xdg-open …)"
+
+.PHONY: openapi-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview
