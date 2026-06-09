@@ -9,7 +9,7 @@ description: |
   - 接入新仓库："给 X 仓库加入这套工具链" → 读 references/adoption.md（一次性 10 项配置）
   - 工具命令咨询："openapi-check 是什么"、"怎么跑 lint" → 读 references/toolchain.md
 
-  范围：API 设计 + 实现 + 接入 + 本地校验。AI 直接生成 Go 代码 + swag 注释 + spec 修改 + 跑 make 命令。**不在范围**：部署、breaking change 自动判定（人工 / AI 判定 + 后续 oasdiff）、contract test。
+  范围：API 设计 + 实现 + 接入 + 本地校验。AI 直接生成 Go 代码 + swag 注释 + spec 修改 + 跑 make 命令。breaking change 由 `make openapi-diff`（oasdiff）自动检测。**不在范围**：部署、contract test。
 ---
 
 # Octo API skill
@@ -101,31 +101,15 @@ make openapi-check
 
 ### 识别 breaking change
 
-修改 endpoint 后**必跑** `make openapi-diff`（默认对比 `origin/main`），脚本会输出 spec 的文本 diff。AI 按以下判定分类每个 diff 项：
+修改 endpoint 后**必跑** `make openapi-diff`（默认对比 `origin/main`），oasdiff 按 OpenAPI 语义自动分类每个改动：
 
-🔴 **breaking**（需走 Deprecate 流程 / 加版本 / 通知客户端）：
-- 删字段 / 删 endpoint / 删 response code
-- 改字段类型（int → string，optional → required 类型收紧）
-- 加必填参数 / 加必填字段
-- optional → required
-- 收紧枚举值（删 enum 成员）
-- 改字段名（json key 变了）
-- 收紧校验（max=200 → max=100）
+- 🔴 `error` 严重度 = breaking → 命令 exit 1，CI 阻断
+- 🟡 `warning` / 🟢 `info` = non-breaking → 通过
 
-🟢 **non-breaking**（可直接合并）：
-- 加可选字段 / 可选参数
-- 加新 endpoint
-- 加新 response code
-- 扩展枚举（加 enum 成员）
-- 放宽校验
-- 改 description / summary
+AI 看到 🔴 输出时**主动提示用户**：
 
-AI 发现 🔴 项时**主动提示用户**：
-
-> 这次修改包含 breaking change：[列出具体 diff 项]
-> 建议：(a) 保留旧字段一段时间走 deprecate / (b) 暴露新版本 endpoint / (c) 跟 octo-cli 等客户端对齐后再合并。
-
-废弃 endpoint / 字段的具体做法见 `references/api-spec.md` H 章节。
+> 本次修改 oasdiff 报告 N 个 breaking change：[转述 oasdiff error 列表]
+> 建议：(a) 走 Deprecate 流程（见 api-spec.md H）/ (b) 暴露新版本 endpoint / (c) 跟 octo-cli 等客户端对齐后再合并。
 
 ---
 

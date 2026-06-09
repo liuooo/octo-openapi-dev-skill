@@ -15,6 +15,7 @@
 #   OCTO_API_DIR       skill package root (default tools/octo-api)
 
 SWAG_VERSION    ?= v2.0.0-rc5
+OASDIFF_VERSION ?= v1.18.5
 OPENAPI_OUT_DIR ?= docs/openapi
 OCTO_API_DIR    ?= tools/octo-api
 
@@ -28,7 +29,7 @@ openapi-help:
 	@echo "  make openapi-lint      单独跑 spectral 校验"
 	@echo "  make openapi-verify    gen + drift 检测"
 	@echo "  make openapi-coverage  检查 handler 是否都有 @Router"
-	@echo "  make openapi-diff      跟 base ref（默认 origin/main）diff，识别 breaking"
+	@echo "  make openapi-diff      跟 base ref diff，oasdiff 检测 breaking"
 	@echo "  make openapi-preview   本地生成 HTML 预览（Redoc）"
 	@echo "  make openapi-install   装 swag v2 CLI（pin $(SWAG_VERSION)）"
 	@echo ""
@@ -37,7 +38,8 @@ openapi-help:
 # Resolve swag absolute path: prefer PATH (e.g. brew), else $GOPATH/bin
 # (where `go install` lands). Makefile can't trust caller's PATH to
 # contain $GOPATH/bin, so we fall back explicitly.
-SWAG := $(shell command -v swag 2>/dev/null || echo $$(go env GOPATH)/bin/swag)
+SWAG    := $(shell command -v swag    2>/dev/null || echo $$(go env GOPATH)/bin/swag)
+OASDIFF := $(shell command -v oasdiff 2>/dev/null || echo $$(go env GOPATH)/bin/oasdiff)
 
 OPENAPI_SPEC_FILES := \
 	$(OPENAPI_OUT_DIR)/swagger.yaml \
@@ -96,10 +98,22 @@ openapi-check: openapi-coverage openapi-verify openapi-lint
 	@echo "✅ OpenAPI four-gate check passed (coverage → gen → verify → lint)"
 
 # ----------------------------------------------------------------------
-# Diff current spec against a base git ref (default origin/main).
-# Outputs text diff; AI / reviewer classifies as breaking or non-breaking.
+# Install oasdiff CLI if missing (semantic OpenAPI diff, breaking detection)
 # ----------------------------------------------------------------------
-openapi-diff: openapi-gen
+oasdiff-install:
+	@$(OASDIFF) --version 2>/dev/null | grep -q "oasdiff" || { \
+	  echo "Installing oasdiff $(OASDIFF_VERSION) to $$(go env GOPATH)/bin..."; \
+	  go install github.com/oasdiff/oasdiff@$(OASDIFF_VERSION); \
+	}
+	@$(OASDIFF) --version
+
+# ----------------------------------------------------------------------
+# Diff current spec against a base git ref (default origin/main).
+# Uses oasdiff to classify each change as error / warning / info by
+# OpenAPI semantics (breaking detection — no AI / human judgment needed).
+# Exit code 1 if any 'error' severity change is found.
+# ----------------------------------------------------------------------
+openapi-diff: openapi-gen oasdiff-install
 	@bash $(OCTO_API_DIR)/scripts/diff-openapi.sh $(BASE_REF)
 
 # ----------------------------------------------------------------------
@@ -112,4 +126,4 @@ openapi-preview: openapi-gen
 	@echo ""
 	@echo "✓ open $(OPENAPI_OUT_DIR)/index.html (macOS: open …; Linux: xdg-open …)"
 
-.PHONY: openapi-help openapi-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview
+.PHONY: openapi-help openapi-install oasdiff-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview

@@ -232,12 +232,9 @@ jobs:
   # --------------------------------------------------------------------
   # Gate 4: Breaking change check (PR only)
   # --------------------------------------------------------------------
-  # Diffs the just-generated spec against the PR base branch's committed
-  # spec. Outputs the text diff into the GitHub step summary so reviewers
-  # see breaking / non-breaking analysis without digging through logs.
-  # Non-blocking — actual breaking-vs-not classification is a human / AI
-  # judgment call (see SKILL.md §3 "识别 breaking change" criteria).
-  # When oasdiff is integrated, this job can switch to fail-on-breaking.
+  # Runs oasdiff against the PR base branch's committed spec. Fails on
+  # any 'error' severity change (breaking); warnings / infos are written
+  # to the step summary but do not fail the build.
   breaking-check:
     name: Breaking Change Check
     needs: [changes, generate]
@@ -250,17 +247,24 @@ jobs:
           fetch-depth: 0  # need history to access PR base ref's spec
           persist-credentials: false
 
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+
       - uses: actions/download-artifact@fa0a91b85d4f404e444e00e005971372dc801d16 # v4
         with:
           name: openapi-spec
           path: .
 
-      - name: Diff against PR base
+      - name: Install oasdiff
+        run: go install github.com/oasdiff/oasdiff@latest
+
+      - name: oasdiff breaking against PR base
         run: |
-          echo "## OpenAPI Spec Diff vs \`${{ github.event.pull_request.base.ref }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "## OpenAPI Breaking Change Check vs \`${{ github.event.pull_request.base.ref }}\`" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          bash tools/octo-api/diff-openapi.sh "origin/${{ github.event.pull_request.base.ref }}" 2>&1 | tee -a $GITHUB_STEP_SUMMARY || true
+          bash tools/octo-api/scripts/diff-openapi.sh "origin/${{ github.event.pull_request.base.ref }}" 2>&1 | tee -a $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
   # --------------------------------------------------------------------

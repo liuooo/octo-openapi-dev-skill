@@ -1,10 +1,7 @@
 #!/usr/bin/env bash
 #
-# diff-openapi.sh — Compare current OpenAPI spec against a base git ref.
-#
-# Outputs a unified text diff. Does NOT classify breaking vs non-breaking
-# — that judgment is left to a reviewer or AI looking at the diff
-# (semantic OpenAPI diff would need oasdiff, which is on the roadmap).
+# diff-openapi.sh — Compare current OpenAPI spec against a base git ref
+# using oasdiff (semantic, breaking-change-aware).
 #
 # Usage:
 #   bash tools/octo-api/scripts/diff-openapi.sh [base_ref]
@@ -15,88 +12,57 @@
 #   bash tools/octo-api/scripts/diff-openapi.sh v0.5.0          # compare against a tag
 #
 # Exit codes:
-#   0 — no spec change
-#   1 — spec changed (review needed) OR base ref not found
+#   0 — no spec change, OR changes are all info/warning (non-breaking)
+#   1 — at least one 'error' severity change (breaking), OR base ref missing
 
 set -euo pipefail
 
 BASE_REF="${1:-origin/main}"
-SPEC_FILES=("docs/openapi/swagger.yaml" "docs/openapi/swagger.json")
-CURRENT_DIR="$(pwd)"
+SPEC_FILE="docs/openapi/swagger.yaml"
 
-if [ ! -f "${SPEC_FILES[0]}" ]; then
-  echo "❌ Current spec not found: ${SPEC_FILES[0]}"
-  echo "   Run 'make openapi-gen' first to generate the current spec."
+if [ ! -f "$SPEC_FILE" ]; then
+  echo "❌ Current spec not found: $SPEC_FILE"
+  echo "   Run 'make openapi-gen' first."
   exit 1
 fi
 
-TMP_DIR=$(mktemp -d)
-trap 'rm -rf "$TMP_DIR"' EXIT
+# Resolve oasdiff binary (PATH or $GOPATH/bin)
+OASDIFF="$(command -v oasdiff 2>/dev/null || echo "$(go env GOPATH)/bin/oasdiff")"
+if [ ! -x "$OASDIFF" ]; then
+  echo "❌ oasdiff not found (expected at $OASDIFF)."
+  echo "   Run 'make oasdiff-install' or 'go install github.com/oasdiff/oasdiff@latest'."
+  exit 1
+fi
+
+TMP=$(mktemp -d)
+trap 'rm -rf "$TMP"' EXIT
 
 # Fetch base spec from git
-BASE_AVAILABLE=true
-for f in "${SPEC_FILES[@]}"; do
-  if ! git show "$BASE_REF:$f" > "$TMP_DIR/$(basename "$f")" 2>/dev/null; then
-    BASE_AVAILABLE=false
-    break
-  fi
-done
-
-if [ "$BASE_AVAILABLE" = false ]; then
-  echo "⚠️  Base spec not found in $BASE_REF (first time? wrong ref?)"
-  echo "    Tried: $BASE_REF:${SPEC_FILES[0]}"
-  echo ""
-  echo "If this is the first time the spec is being committed, this is expected."
-  echo "After this PR merges, future PRs can diff against $BASE_REF."
+if ! git show "$BASE_REF:$SPEC_FILE" > "$TMP/base.yaml" 2>/dev/null; then
+  echo "⚠️  Base spec not found in $BASE_REF ($SPEC_FILE)."
+  echo "    First-time setup? After this PR merges, future PRs can diff against $BASE_REF."
   exit 1
 fi
 
-# Diff
-CHANGED=false
-for f in "${SPEC_FILES[@]}"; do
-  base_file="$TMP_DIR/$(basename "$f")"
-  if ! diff -q "$base_file" "$f" >/dev/null 2>&1; then
-    CHANGED=true
-    echo "═══════════════════════════════════════════════════════"
-    echo "  Diff: $f  ($BASE_REF → HEAD)"
-    echo "═══════════════════════════════════════════════════════"
-    diff -u "$base_file" "$f" || true
-    echo ""
-  fi
-done
+echo "═══════════════════════════════════════════════════════"
+echo "  oasdiff breaking: $BASE_REF → HEAD"
+echo "═══════════════════════════════════════════════════════"
 
-if [ "$CHANGED" = false ]; then
-  echo "✅ No OpenAPI spec change between $BASE_REF and HEAD"
-  exit 0
+# --fail-on ERR sets exit=1 on any error-severity change.
+EXIT=0
+"$OASDIFF" breaking "$TMP/base.yaml" "$SPEC_FILE" --fail-on ERR || EXIT=$?
+
+echo
+if [ "$EXIT" = 0 ]; then
+  echo "✅ No breaking changes detected."
+elif [ "$EXIT" = 1 ]; then
+  echo "🔴 Breaking change(s) detected (see 'error' lines above)."
+  echo
+  echo "Options:"
+  echo "  - Roll back the breaking change"
+  echo "  - Use the deprecate flow (see references/api-spec.md §H)"
+  echo "  - Bump API version (e.g. /v2) and keep /v1 alongside"
+  echo "  - Coordinate with API clients (octo-cli, etc.) and merge knowingly"
 fi
 
-cat <<EOF
-
-───────────────────────────────────────────────────────
-  Reviewer / AI: classify each diff entry below
-───────────────────────────────────────────────────────
-
-🔴 Breaking changes (require deprecate flow or version bump):
-   • Removed property / endpoint / response code
-   • Changed property type (int → string, optional → required type narrowing)
-   • Added required parameter / required property
-   • Made optional field required
-   • Restricted enum values (removed members)
-   • Renamed property (json key changed)
-   • Tightened validation (max=200 → max=100, etc.)
-
-🟢 Non-breaking changes (safe to ship):
-   • Added optional property / parameter
-   • Added new endpoint
-   • Added new response code
-   • Expanded enum values (added members)
-   • Relaxed validation (max=100 → max=200)
-   • Updated description / summary only
-
-If any diff falls into the breaking category, plan accordingly:
-   1. Confirm with API consumers (octo-cli, client SDKs) before merging
-   2. Consider a deprecate flow on the old shape
-   3. Document in PR description
-
-EOF
-exit 1
+exit "$EXIT"
