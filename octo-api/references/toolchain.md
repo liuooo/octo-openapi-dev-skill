@@ -6,6 +6,7 @@
 
 | 命令 | 用途 | 何时跑 |
 |---|---|---|
+| `make openapi-help` | 列所有 `openapi-*` 命令 + 一句话说明 | 忘记某个命令时 |
 | `make openapi-check` | 一键 4 道闸（coverage → verify → lint） | 提交代码前 |
 | `make openapi-gen` | 重生 `docs/openapi/swagger.{yaml,json,docs.go}` | 改了 API 注释后 |
 | `make openapi-lint` | 单独跑 spectral 校验 | debug lint 错误时迭代用 |

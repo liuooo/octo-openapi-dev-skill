@@ -18,6 +18,22 @@ SWAG_VERSION    ?= v2.0.0-rc5
 OPENAPI_OUT_DIR ?= docs/openapi
 OCTO_API_DIR    ?= tools/octo-api
 
+# ----------------------------------------------------------------------
+# List available targets (the only command-line discovery entry).
+# ----------------------------------------------------------------------
+openapi-help:
+	@echo "OpenAPI toolchain — available targets:"
+	@echo "  make openapi-check     一键 4 道闸（coverage → verify → lint）"
+	@echo "  make openapi-gen       重生 $(OPENAPI_OUT_DIR)/swagger.{yaml,json,docs.go}"
+	@echo "  make openapi-lint      单独跑 spectral 校验"
+	@echo "  make openapi-verify    gen + drift 检测"
+	@echo "  make openapi-coverage  检查 handler 是否都有 @Router"
+	@echo "  make openapi-diff      跟 base ref（默认 origin/main）diff，识别 breaking"
+	@echo "  make openapi-preview   本地生成 HTML 预览（Redoc）"
+	@echo "  make openapi-install   装 swag v2 CLI（pin $(SWAG_VERSION)）"
+	@echo ""
+	@echo "Docs: $(OCTO_API_DIR)/references/toolchain.md"
+
 # Resolve swag absolute path: prefer PATH (e.g. brew), else $GOPATH/bin
 # (where `go install` lands). Makefile can't trust caller's PATH to
 # contain $GOPATH/bin, so we fall back explicitly.
@@ -96,4 +112,4 @@ openapi-preview: openapi-gen
 	@echo ""
 	@echo "✓ open $(OPENAPI_OUT_DIR)/index.html (macOS: open …; Linux: xdg-open …)"
 
-.PHONY: openapi-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview
+.PHONY: openapi-help openapi-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview

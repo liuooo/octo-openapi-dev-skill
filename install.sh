@@ -169,6 +169,10 @@ Next steps (one-time, manual):
 
   6. (admin) Configure branch protection — see $TARGET_DIR/references/adoption.md step 9
 
+Discover all commands:
+
+  make openapi-help
+
 Verify:
 
   make openapi-check
