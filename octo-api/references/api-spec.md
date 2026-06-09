@@ -29,7 +29,7 @@ OCTO 是多服务架构，**每个模块仓库一个独立服务，各自一套 
 |---|---|
 | `octo-server` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations 等 |
 | `octo-matter` | matters / `_extract`（LLM 抽取动作）|
-| `octo-smart-summary` | summaries / summary_templates / summary_schedules / summary_chat_candidates / summary_member_candidates / `_summary_infer` |
+| `octo-smart-summary` | summaries / summary/templates / summary/schedules / summary/chat_candidates / summary/member_candidates / summary/`_infer` |
 | _未来新模块_ | 自有资源域，仓库自决 |
 
 **关键约束**：
@@ -145,6 +145,8 @@ integrations / reports / reactions / friends / apps / webhooks
 | `/v1/common/appconfig` | `/v1/app_configs` | "common" 不表 audience / domain |
 | `/v1/admin/users`（同契约）| `/v1/users` + 鉴权中间件 | audience 仅做权限分流，无契约差 |
 | `/v1/manager/login` | `POST /v1/auth/sessions` 或单独 `/v1/auth/login` | 认证流程跑错 audience |
+| `/v1/summary/summary_templates` | `/v1/summary/templates` | domain 段已说明域，资源名再带 `summary_` 是冗余 |
+| `/v1/summary-templates` | `/v1/summary/templates` 或 `/v1/templates` | kebab-case 违 R6（同时也会触发规则）；compound 命名歧义 |
 | `/v1/spaces/{id}/status/{status}` | `PATCH /v1/spaces/{id}` body 带 status | 参数塞路径 |
 | `/a/{1}/b/{2}/c/{3}/d/{4}` | 拆独立资源 | 嵌套 > 3 级 |
 
