@@ -44,36 +44,23 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 > **URL 设计层 vs swag `@Router` 写法**：上面表里的 URL 是**客户端实际请求**的形态（含 `/v1`）。但在 Go handler 的 `@Router` 注释里写**相对路径**（不含 `/v1`），由 main.go 的 `@BasePath /v1` 提供前缀。否则 swag v2 会让 servers + path 都含 `/v1` 导致 `/v1/v1/...` 重复。详见 E 章节"`@Router` 写法"。
 
-### 命名空间前缀（namespace prefix）
+### URL 只编码资源（没有"命名空间前缀"概念）
 
-不是所有 `/v1/` 下的一级路径段都是"资源"。OCTO 允许少量**命名空间词**作为功能分组前缀，免 R6 复数规则。命名空间下嵌套的资源段**仍须 R6 复数**。
+**单一服务内所有路径段都是资源，全部走 R6 复数规则**。真正的"命名空间"在**仓库边界** —— Mininglamp-OSS 下独立的模块仓库（`octo-server` / `octo-matter` / `octo-cli` 等）才是不同的命名空间，各服务通过 `OCTO_API_BASE_URL` 路由分流。**单仓库内没有命名空间概念。**
 
-| 类型 | 例 | 是否走 R6 复数 |
+不要用 URL 前缀表达非资源语义：
+
+| 想表达的 | ❌ 路径前缀（错）| ✅ 正确做法 |
 |---|---|---|
-| 资源 | `/v1/matters` / `/v1/groups` | ✅ 必须复数 |
-| 命名空间前缀 | `/v1/admin/...` / `/v1/manager/...` | ❌ 命名空间词本身可单数 |
-| 命名空间下的资源 | `/v1/manager/backups` / `/v1/admin/users` | ✅ 嵌套段仍须复数 |
+| 权限分级（管理后台 / 普通用户）| `/v1/admin/...` / `/v1/manager/...` | 同一资源 URL（`/v1/backups/...`）+ 鉴权中间件按角色放行 |
+| 内部接口 / 外部分离 | `/v1/internal/...` | `X-Internal-Token` 等头部 + 路由中间件，不进 URL |
+| 认证流程 | `/v1/auth/login` | `POST /v1/sessions`（创建会话作为资源动作）|
+| 代某人执行 | `/v1/obo/...` | request body 或 header 带 `on_behalf_of=<user_id>` |
+| 聚合 / 搜索 | `/v1/statistics/...` / `/v1/search/...` | `/v1/<resource>/_search`、`/v1/<resource>/aggregations` 等资源动作 |
 
-**保留命名空间词**（白名单，新增需改 spectral 规则）：
+`admin` / `manager` / `internal` / `auth` 等词在 `octo-path-resource-singular` 的禁单数 list 里，写在路径里会报 R6 错。修法：按上表迁移到"资源 + 中间件"的表达，**不要**靠豁免绕过规则。
 
-| 词 | 语义 |
-|---|---|
-| `admin` | 管理后台接口（运营 / 客服侧）|
-| `manager` | 管理类操作（系统配置 / 备份等，不是单一资源）|
-| `internal` | 内部系统对内调用（非外部客户端可访问）|
-| `auth` | 认证 / 授权（登录 / token / 鉴权流程）|
-| `statistics` | 统计聚合接口（不是 CRUD 资源）|
-| `obo` | on-behalf-of 调用（代某用户执行）|
-| `common` | 公共能力（无资源主体）|
-| `search` | 搜索（不是资源 CRUD）|
-
-**反例**：
-
-| ❌ 错 | ✅ 对 | 原因 |
-|---|---|---|
-| `/v1/manager/backup` | `/v1/manager/backups` | 命名空间下的资源仍须复数 |
-| `/v1/admin/user/{id}` | `/v1/admin/users/{user_id}` | 嵌套段违反 R6 + R7 |
-| `/v1/dashboard/...` | 加入白名单或拆为资源 | 新命名空间词需先扩白名单 |
+> **存量改造**：仓库历史路径含此类前缀的（如 `/v1/manager/backup/{id}`），属 R6 历史债，按模块逐步改造 —— 见 `adoption.md` "存量仓库接入"。
 
 ### operationId 规则（R10）
 

@@ -332,11 +332,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Envelope_Data'
 
-  # Namespace-prefix boundary: a resource nested under a namespace word
-  # must still be plural. "/manager" itself is an allowed namespace
-  # prefix (no longer in the singular forbidden list), but "backup"
-  # under it must be plural.
-  /manager/backup/{backup_id}:                  # singular "backup" under namespace → path-resource-singular
+  # No namespace exemption: functional prefixes are R6 violations.
+  # "manager" / "admin" / "internal" / "auth" are NOT exempt — they're
+  # singular non-resource words and must not appear in path. Use
+  # middleware for permission/auth/internal scoping, not URL prefix.
+  /manager/backup/{backup_id}:                  # singular "manager" + singular "backup" → path-resource-singular
     get:
       operationId: manager.backup.get
       summary: Get backup
@@ -347,6 +347,19 @@ paths:
           required: true
           schema:
             type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /admin/users:                                 # singular "admin" prefix → path-resource-singular
+    get:
+      operationId: admin.user.list
+      summary: List users via admin
+      tags: [matter]
       responses:
         '200':
           description: ok
