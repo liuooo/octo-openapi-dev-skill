@@ -156,7 +156,7 @@ Required (make the local toolchain work):
 
   3. Generate first baseline (auto-installs swag v2 CLI on first run):
        make openapi-gen
-       git add docs/openapi/swagger.yaml docs/openapi/swagger.json docs/openapi/docs.go
+       git add docs/openapi/swagger.yaml
        git commit -m "chore: add openapi baseline"
 
 Optional (enable on demand — see references/adoption.md):
