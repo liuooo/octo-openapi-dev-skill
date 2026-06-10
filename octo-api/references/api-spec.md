@@ -68,7 +68,7 @@ URL 一般形态（可叠加，每种最多一段）:
 
 | 角色 | 形态 | 何时用（heuristic）| 例 |
 |---|---|---|---|
-| **资源** | 复数 snake_case | 核心 entity。OCTO 已知资源建议复数（matters / users / groups / sessions / grants / scopes / clients / app_bots / channels …，非穷尽）| `/v1/users` `/v1/matters` |
+| **资源** | 复数 snake_case | 核心 entity（OCTO 各服务已知资源见 A.1 表格）| `/v1/users` `/v1/matters` |
 | **域限定** | 单数 / 复数均可 | "前缀拿掉，资源名**在本服务内**是否歧义？"歧义 → 加。跨服务同名靠 base URL 路由消歧，**不需要**前缀 | `/v1/obo/grants`（octo-server 内 `grants` 歧义：OIDC / RBAC / 文件权限 / OBO）`/v1/auth/sessions`（同服务内 `sessions` 歧义：用户 / 语音 / 认证）`/v1/oidc/clients` |
 | **受众标记** | 单数 / 复数均可 | "API 契约对不同消费方是否本质不同？"（SLA / 文档可见性 / SDK 生成）契约不同 → 加；纯权限差 → 走中间件 | `/v1/internal/notifications` `/v1/admin/users`（仅当与 `/v1/users` 契约真不同）|
 | **资源动作** | `_` 前缀 | 非 CRUD 动词 | `/v1/users/_search` `/v1/matters/_batch` |
@@ -92,14 +92,13 @@ URL 一般形态（可叠加，每种最多一段）:
 
 ### A.4 设计建议（doc 级，规则不报）
 
-- 资源名建议**复数**（matters / users / groups），单数化是反例 ⚠️
 - URL 以 `/v1/` 开头（R12 — 当前唯一版本）
 - 嵌套层级建议 ≤ 3 级（含 `/v1/` 起算）
 - 状态 / 枚举值**不进路径** —— 走 body 或 query
 - CRUD 用标准 HTTP 动词；**只有状态机**用 RPC 动词原形（close / reopen / archive / extract）
 - 存量历史前缀（`/v1/manager/...` `/v1/admin/...` 等）若本质只做权限分流（与 `/v1/<resource>` 同契约），按模块逐步迁移到"资源 + 中间件"，见 `adoption.md` "存量仓库接入"
 
-> **swag `@Router` 写法**: 上面 URL 是客户端实际请求形态（含 `/v1`）。Go handler 的 `@Router` 注释里写**相对路径**（不含 `/v1`），由 main.go 的 `@BasePath /v1` 提供前缀。否则 swag v2 会让 servers + path 都含 `/v1` 导致 `/v1/v1/...` 重复。详见 E 章节。
+> swag `@Router` 写**相对路径**（不含 `/v1`），完整写法见 E 章节。
 
 ### A.5 operationId（R10）
 
@@ -114,30 +113,19 @@ URL 一般形态（可叠加，每种最多一段）:
 - verb 动词原形（add / remove / create / list / get / update / delete / close / reopen / archive / extract …）
 - 跟 swag `@ID` 标签完全一致
 
-### A.6 反例对照
+### A.6 设计陷阱（doc 反例，PR review 拦截）
 
-⚠️ doc 反例（PR review 拦截，规则不报）:
+格式问题由 A.3 的 lint 规则抓；下列是规则抓不到、需 review 判断的设计错误：
 
-| ⚠️ 反例 | ✅ 建议 | 备注 |
+| ⚠️ 反例 | ✅ 建议 | 错在哪 |
 |---|---|---|
 | `/v1/user/{id}` | `/v1/users/{user_id}` | 已知资源单数化 + 裸 id |
 | `/v1/manager/backup/{id}` | `/v1/manager/backups/{backup_id}` | 嵌套资源单数 |
 | `/v1/manager/adduser` | `POST /v1/manager/users` | 动词进 URL |
 | `/v1/admin/users`（同契约） | `/v1/users` + 鉴权中间件 | audience 仅做权限分流，无契约差 |
 | `/v1/manager/login` | `POST /v1/auth/sessions` | 认证流程跑错 audience |
-| `/v1/summary/summary_templates`（假设服务内确实需要 `summary/` qualifier）| `/v1/summary/templates` | domain 段已说明域，资源段再带 `summary_` 冗余 |
-| octo-smart-summary 内部写 `/v1/summary/templates` | `/v1/templates` | 服务自身就是 summary 域，**网关挂载点不该再进 spec**，直接平铺资源 |
+| `/v1/summary/templates`（octo-smart-summary 内）/ `/v1/summary/summary_templates`（同 domain 重复）| `/v1/templates` / `/v1/summary/templates` | 网关挂载不进 spec；domain 段已说明域则资源段不再重复 |
 | `/v1/common/appconfig` | `/v1/app_configs` | "common" 不表 audience / domain |
-| `/v1/spaces/{id}/status/{status}` | `PATCH /v1/spaces/{id}` body 带 status | 参数塞路径 |
-| `/a/{x}/b/{y}/c/{z}/d/{w}` | 拆独立资源 | 嵌套 > 3 级 |
-
-❌ 规则违例（lint 阻断）:
-
-| ❌ 错 | ✅ 对 | 触发规则 |
-|---|---|---|
-| `/sendMessage` / `/Users` / `/summary-templates` | `/v1/messages` / `/v1/users` / `/v1/templates`（smart-summary 内）或 `/v1/summary_templates`（compound）| `octo-path-snake-case`（kebab-case 触发）|
-| `/matters/{uid}` / `/matters/{matter_no}` | `/matters/{matter_id}` | `octo-path-param-no-uid` + `-id-suffix` |
-| `getMatters` / `matter_create` / `matter` / `a.b.c.d` | `matter.list` / `matter.create` / `matter.<verb>` / 拆 | `octo-operation-id-format` |
 
 ---
 
@@ -165,7 +153,7 @@ envelope.EmptyResp          // 空对象，用于 Data[EmptyResp]（delete / 状
 | delete / close / archive / 状态机动作成功 | `Data[EmptyResp]` | `{object} envelope.Data[EmptyResp]` |
 | 所有 4xx / 5xx 失败 | `Error` | `{object} envelope.Error` |
 
-### 分页模式选择（R5）
+### cursor vs offset 选型
 
 | 用 cursor 当 | 用 offset 当 |
 |---|---|
@@ -173,6 +161,8 @@ envelope.EmptyResp          // 空对象，用于 Data[EmptyResp]（delete / 状
 | 列表会插入新数据，offset 漂移 | 列表稳定，靠 page 跳 |
 | 客户端不需要总数 | 客户端要显示"共 N 条" |
 | 例：消息流 / 通知 / event log | 例：matter 列表 / 用户管理表格 |
+
+> 请求参数 / 响应 schema 见 F 章节。
 
 ### handler 用法
 
@@ -258,7 +248,7 @@ type MatterResp struct {
 - 可选字段：json tag 加 `omitempty`，Go 类型用指针（`*string`）表示语义上的 null
 - 入参校验：`binding:"required,max=200"` 等 gin 标签
 
-### 关键 swaggertype 速查
+### Go 类型与 swaggertype 对照
 
 | 字段语义 | Go 类型 | json tag | swaggertype |
 |---|---|---|---|
@@ -280,16 +270,6 @@ type MatterResp struct {
 | `id` (path param) | `matter_id` | R7 裸 id |
 | `uid` / `short_id` / `*_no` | `<resource>_id` | R7 历史命名全禁 |
 | json tag `MatterID` / `matterId` | json tag `matter_id` | R8 — json tag 必须 snake_case（Go 字段名是 PascalCase 没事）|
-
-### 速查例
-
-> 字段类型是布尔 → 必须 `is_` / `has_` / `can_` 前缀
-
-> 字段是时间 → 后缀 `_at` + Go `string`（或 `*string`）+ `swaggertype:"string,date-time"`
-
-> 字段是 URL → 后缀 `_url` + Go `string` + `swaggertype:"string,uri"`
-
-> 路径参数 → 一律 `<resource>_id`，不准 `id` / `uid` / `*_no`
 
 ---
 
@@ -356,23 +336,6 @@ httperr.ResponseErrorL(c, errcode.ErrNotFound,
 
 参数：`httperr.ResponseErrorL(c, errCode, detailsMap, hintMap)` —— details 跟 hint 都用 `map[string]any{...}`，传 `nil` 跳过。
 
-### 业务情形 → code 映射
-
-| 业务情形 | code |
-|---|---|
-| 用户没 token / token 失效 | `AUTH_REQUIRED` (401) |
-| 用户有 token 但不是 matter 创建者 | `FORBIDDEN` (403) |
-| matter_id 在 DB 里查不到 | `NOT_FOUND` (404) |
-| matter 已经被删除 / 已关闭 不能再操作 | `CONFLICT` (409) |
-| 创建时发现 title 重复 | `DUPLICATE` (409) |
-| 入参 title 超过 200 字符 | `VALIDATION_ERROR` (400) |
-| 上传文件 > 10MB | `PAYLOAD_TOO_LARGE` (413) |
-| POST body 用了 application/xml | `UNSUPPORTED_MEDIA_TYPE` (415) |
-| 客户端版本太老不支持新字段 | `CLIENT_VERSION_TOO_OLD` (426) |
-| 1 秒内超过 10 次请求 | `RATE_LIMITED` (429) |
-| DB / 内部 panic | `INTERNAL_ERROR` (500) |
-| WuKongIM / 外部 API 挂了 | `UPSTREAM_UNAVAILABLE` (503) |
-
 ### swag @Failure 标签
 
 每个鉴权 endpoint 至少声明这些响应：
@@ -422,12 +385,11 @@ httperr.ResponseErrorL(c, errcode.ErrNotFound,
 | `@Param` | ✅（有参时）| 所有 path/query/body 参数都列 |
 | `@Success` | ✅ | 至少 1 个 + envelope 类型 |
 | `@Failure` | ✅（鉴权时）| 至少 401/403/404/500 |
-| `@Router` | ✅ | **相对路径**（不带 `/v1` 前缀）+ method —— 见下方"⚠️ @Router 写法" |
+| `@Router` | ✅ | **相对路径**（不带 `/v1` 前缀）+ method |
 
-> ⚠️ **`@Router` 写法**：swag v2 把 main.go 的 `@BasePath /v1` 转成 OpenAPI `servers: [{url: /v1}]`。如果 `@Router` 又写完整 `/v1/matters`，客户端实际请求会变成 `/v1/v1/matters`（重复）。
+> ⚠️ **`@Router` 必须相对路径**：main.go 的 `@BasePath /v1` 已转成 OpenAPI `servers: [{url: /v1}]`，`@Router` 再写 `/v1/...` 会让客户端请求变 `/v1/v1/...` 重复。
 >
-> **正确**：`@Router /matters/{matter_id} [delete]`（不含 `/v1`，由 `@BasePath` 提供）
-> **错误**：`@Router /v1/matters/{matter_id} [delete]`
+> ✅ `@Router /matters/{matter_id} [delete]`　　❌ `@Router /v1/matters/{matter_id} [delete]`
 
 ### 完整模板
 
@@ -477,24 +439,9 @@ func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 
 ### @Success / @Failure 写法
 
-```go
-// 单条
-// @Success 200 {object} envelope.Data[MatterResp]
+格式：`@Success|@Failure <http_code> {object} <envelope_type>[<inner_type>] "<message>"`
 
-// 列表（cursor）
-// @Success 200 {object} envelope.CursorList[MatterResp]
-
-// 列表（offset）
-// @Success 200 {object} envelope.OffsetList[MatterResp]
-
-// 空响应（delete / 状态机）
-// @Success 200 {object} envelope.Data[EmptyResp] "Matter deleted"
-
-// 失败
-// @Failure 404 {object} envelope.Error "NOT_FOUND"
-```
-
-格式：`@Success/@Failure <http_code> {object} <envelope_type>[<inner_type>] "<message>"`
+`<envelope_type>` 从 5 种 envelope 中选（见 B 章选型表）。`<message>` 可省略；失败响应一般写 code（如 `"NOT_FOUND"`）便于阅读。
 
 ### 全局 main.go 必带
 
