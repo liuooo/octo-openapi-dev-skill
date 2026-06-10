@@ -19,8 +19,11 @@ echo "═══ 1/4 check-swag-coverage.sh unit test ═══"
 bash tests/fixtures/test-coverage-script.sh
 echo
 
-echo "═══ 2/4 octo-list-check.js unit test ═══"
-node tests/functions/octo-list-check.test.mjs
+echo "═══ 2/4 spectral function unit tests ═══"
+for t in tests/functions/*.test.mjs; do
+  echo "--- $t ---"
+  node "$t"
+done
 echo
 
 echo "═══ 3/4 spectral rule fire-test (violations.yaml) ═══"

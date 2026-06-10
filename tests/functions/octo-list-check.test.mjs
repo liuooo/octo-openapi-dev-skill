@@ -162,6 +162,41 @@ const r2 = octoListCheck('uid', { mode: 'forbidden', list: ['uid'] });
 assert('default message contains value + mode',
   Array.isArray(r2) && r2[0].message.includes('uid') && r2[0].message.includes('forbidden'));
 
+
+// ============================================================
+// Mode: forbidden-suffix (new)
+// ============================================================
+console.log('\nmode: forbidden-suffix');
+assert('start_time ends with _time → violation',
+  violates('start_time', { mode: 'forbidden-suffix', list: ['_time', '_ts', '_timestamp'] }));
+assert('login_ts ends with _ts → violation',
+  violates('login_ts', { mode: 'forbidden-suffix', list: ['_time', '_ts', '_timestamp'] }));
+assert('created_timestamp ends with _timestamp → violation',
+  violates('created_timestamp', { mode: 'forbidden-suffix', list: ['_time', '_ts', '_timestamp'] }));
+assert('created_at → pass',
+  passes('created_at', { mode: 'forbidden-suffix', list: ['_time', '_ts', '_timestamp'] }));
+assert('counts → pass (suffix match is literal, not segment)',
+  passes('counts', { mode: 'forbidden-suffix', list: ['_ts'] }));
+
+// ============================================================
+// Mode: required-key-prefix (new, object input)
+// ============================================================
+console.log('\nmode: required-key-prefix');
+assert('responses {200, 400} has a 2-prefixed key → pass',
+  passes({ '200': {}, '400': {} }, { mode: 'required-key-prefix', list: ['2'] }));
+assert('responses {201} → pass',
+  passes({ '201': {} }, { mode: 'required-key-prefix', list: ['2'] }));
+assert('responses {400, 500} lacks 2xx → violation',
+  violates({ '400': {}, '500': {} }, { mode: 'required-key-prefix', list: ['2'] }));
+assert('empty object → violation',
+  violates({}, { mode: 'required-key-prefix', list: ['2'] }));
+assert('string input with object-only mode → undefined',
+  octoListCheck('200', { mode: 'required-key-prefix', list: ['2'] }) === undefined);
+assert('array input → undefined (arrays are not key maps)',
+  octoListCheck(['200'], { mode: 'required-key-prefix', list: ['2'] }) === undefined);
+assert('object input with string-only mode → undefined',
+  octoListCheck({ a: 1 }, { mode: 'forbidden', list: ['a'] }) === undefined);
+
 // ============================================================
 // Summary
 // ============================================================

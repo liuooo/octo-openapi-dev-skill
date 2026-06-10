@@ -35,6 +35,10 @@ components:
           format: uri
         active:                                 # violation: octo-schema-boolean-prefix (no is_/has_/can_)
           type: boolean
+        start_time:                             # violation: octo-schema-no-legacy-time-suffix (_time)
+          type: string
+        login_ts:                               # violation: octo-schema-no-legacy-time-suffix (_ts)
+          type: integer
 
 tags:
   - name: matter
@@ -373,3 +377,199 @@ paths:
                 $ref: '#/components/schemas/Envelope_Data'
         # missing 401 → octo-auth-has-401
         # missing 403 → octo-auth-has-403
+        # missing 404 → octo-auth-has-404
+        # missing 500 → octo-auth-has-500
+
+  # ----- @Router relative-path violation (R12) -----
+  /v1/users:                                    # /v1 prefix doubles with servers:/v1 → octo-path-no-version-prefix
+    get:
+      operationId: user.list
+      summary: List users with doubled prefix
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- @Success required violation (R13) -----
+  /no_success:                                  # only 4xx declared → octo-success-response-required
+    get:
+      operationId: no_success.get
+      summary: Declares no success response
+      tags: [matter]
+      responses:
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Error'
+
+  # ----- Pagination violations (R5) -----
+  /bad_pagination:                              # pagination matches neither cursor nor offset → octo-pagination-shape
+    get:
+      operationId: bad_pagination.list
+      summary: List with malformed pagination
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  pagination:
+                    type: object
+                    properties:
+                      next_offset:              # neither has_more nor total/page/page_size
+                        type: integer
+
+  /cursor_with_total:                           # cursor mode carrying total → octo-pagination-shape (anti-pattern)
+    get:
+      operationId: cursor_with_total.list
+      summary: Cursor list leaking total
+      tags: [matter]
+      parameters:
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  pagination:
+                    type: object
+                    properties:
+                      has_more:
+                        type: boolean
+                      next_cursor:
+                        type: string
+                      total:                    # forbidden in cursor mode
+                        type: integer
+
+  /cursor_missing_param:                        # cursor response without cursor query param → octo-pagination-params-match
+    get:
+      operationId: cursor_missing_param.list
+      summary: Cursor list without cursor param
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  pagination:
+                    type: object
+                    properties:
+                      has_more:
+                        type: boolean
+                      next_cursor:
+                        type: string
+
+  /offset_missing_param:                        # offset response without page query param → octo-pagination-params-match
+    get:
+      operationId: offset_missing_param.list
+      summary: Offset list without page param
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                  pagination:
+                    type: object
+                    properties:
+                      total:
+                        type: integer
+                      page:
+                        type: integer
+                      page_size:
+                        type: integer
+
+  # ----- Batch violations (R11) -----
+  /items/_batch:                                # GET on _batch endpoint → octo-batch-post-only
+    get:
+      operationId: item.batch_list
+      summary: Batch endpoint wrongly exposing GET
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /nobody/_batch:                               # POST _batch without requestBody → octo-batch-requires-body
+    post:
+      operationId: nobody.batch_create
+      summary: Batch endpoint without body
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- @Description duplicates @Summary (R13 anti-pattern) -----
+  /dup_description:
+    get:
+      operationId: dup_description.get
+      summary: List matters owned by caller
+      description: List matters owned by caller.   # same as summary (modulo period) → octo-description-distinct
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  # ----- Deprecated without guidance (H anti-pattern) -----
+  /deprecated_no_guidance:
+    get:
+      operationId: deprecated_no_guidance.get
+      summary: Old endpoint
+      description: This endpoint is old.        # no replacement/removal info → octo-deprecated-needs-guidance
+      deprecated: true
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'

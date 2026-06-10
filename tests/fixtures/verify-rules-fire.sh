@@ -41,6 +41,19 @@ expected = {
     ("octo-response-success-shape",  "/bare_object"),
     ("octo-auth-has-401",            "/auth_no_401"),
     ("octo-auth-has-403",            "/auth_no_401"),
+    ("octo-auth-has-404",            "/auth_no_401"),
+    ("octo-auth-has-500",            "/auth_no_401"),
+    ("octo-path-no-version-prefix",  "/v1/users"),
+    ("octo-success-response-required", "/no_success"),
+    ("octo-pagination-shape",        "/bad_pagination"),
+    ("octo-pagination-shape",        "/cursor_with_total"),
+    ("octo-pagination-params-match", "/cursor_missing_param"),
+    ("octo-pagination-params-match", "/offset_missing_param"),
+    ("octo-batch-post-only",         "/items/_batch"),
+    ("octo-batch-requires-body",     "/nobody/_batch"),
+    ("octo-error-description-known-code", "/raw_error"),
+    ("octo-description-distinct",    "/dup_description"),
+    ("octo-deprecated-needs-guidance", "/deprecated_no_guidance"),
     # resolved $ref violations report at components/schemas/<name>
     ("octo-response-success-shape",  "BadSchema"),       # via /raw_success
     ("octo-response-success-shape",  "Envelope_Error"),  # via /wrong_envelope_in_success
@@ -61,6 +74,7 @@ schema_expected = {
     "octo-schema-time-at-suffix",
     "octo-schema-url-suffix",
     "octo-schema-boolean-prefix",
+    "octo-schema-no-legacy-time-suffix",
     "octo-openapi-version",
 }
 

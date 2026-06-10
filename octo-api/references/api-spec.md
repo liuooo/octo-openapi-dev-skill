@@ -64,6 +64,7 @@ URL 一般形态（可叠加，每种最多一段）:
 | 路径段 **snake_case**，禁 camelCase / PascalCase / kebab-case | `octo-path-snake-case` |
 | Path 参数命名 `{<resource>_id}`，禁 `uid` / `_no` / `short_id` 等遗留 | `octo-path-param-id-suffix` + `octo-path-param-no-uid` |
 | operationId `<resource>.<verb>` 或 `<resource>.<sub>.<verb>`，2–3 段，lowercase snake_case，`.` 分隔 | `octo-operation-id-format` |
+| 路径**不得带 `/v{n}` 前缀**（`@Router` 相对路径，否则与 `servers:/v1` 叠成 `/v1/v1/...`）| `octo-path-no-version-prefix` |
 
 ### A.4 设计建议（doc 级，规则不报）
 
@@ -424,6 +425,8 @@ func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 
 `next_cursor` 是**不透明字符串**（base64 编码的服务端状态），客户端原样回传，不可在客户端解析。
 
+> lint 强制：`octo-pagination-shape`（error，pagination 形态必须二选一且 cursor 禁带 `total`）+ `octo-pagination-params-match`（warn，cursor 响应须声明 `cursor` query 参数 / offset 须声明 `page`）。
+
 swag 入参注释（除上面 @Success 外）：
 
 ```go
@@ -469,6 +472,8 @@ POST /v1/<resource_plural>/_batch
 - `POST /v1/messages/_batch` — 批量发消息
 
 operationId 用 `<resource>.batch_create` / `<resource>.batch_update` 等。
+
+> lint 强制：`octo-batch-post-only`（error，`_batch` 路径仅允许 POST）+ `octo-batch-requires-body`（error，必带 requestBody）。
 
 ### all-or-nothing 语义
 
@@ -549,6 +554,8 @@ func (h *MatterHandler) CreateLegacy(c *wkhttp.Context) { ... }
 ```
 
 swag 看到 `@Deprecated true` 会在生成的 OpenAPI 里给该 operation 加 `deprecated: true`，客户端 SDK 生成器看到这个标志会发出 warning。
+
+> lint：`octo-deprecated-needs-guidance`（warn）要求 deprecated operation 的 description 写明替代方案 / 移除计划（含 instead / removal / sunset 等关键词）。
 
 ### HTTP 响应 header
 

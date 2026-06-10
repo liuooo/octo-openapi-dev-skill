@@ -61,6 +61,43 @@ components:
               type: string
             message:
               type: string
+    EnvelopeCursorList:                       # R5 cursor pagination shape ✅
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatterResp'
+        pagination:
+          type: object
+          properties:
+            has_more:
+              type: boolean
+            next_cursor:
+              type: string
+    EnvelopeOffsetList:                       # R5 offset pagination shape ✅
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatterResp'
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+            page:
+              type: integer
+            page_size:
+              type: integer
+    BatchCreateMattersReq:                    # R11 batch body ✅
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MatterResp'
 
 paths:
   # ----- Boundary pass cases -----
@@ -184,21 +221,127 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnvelopeData'   # envelope ✅
-        '401':                                # auth has-401 ✅
-          description: unauthorized
+        '401':                                # auth has-401 ✅, R2 code in description ✅
+          description: AUTH_REQUIRED
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'  # error envelope ✅
         '403':                                # auth has-403 ✅
-          description: forbidden
+          description: "FORBIDDEN: not owner"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'
-        '404':
-          description: not found
+        '404':                                # auth has-404 ✅
+          description: NOT_FOUND
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnvelopeError'
+        '500':                                # auth has-500 ✅
+          description: INTERNAL_ERROR
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
+  # ----- R5 pagination pass cases -----
+  /matters:                                   # cursor list: params + shape matched ✅
+    get:
+      summary: List matters
+      description: List matters visible to the caller using cursor pagination.
+      tags: [matter]
+      operationId: matter.list
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeCursorList'
+
+  /reports:                                   # offset list: params + shape matched ✅
+    get:
+      summary: List reports
+      description: List reports with page-number pagination for admin tables.
+      tags: [matter]
+      operationId: report.list
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: page_size
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeOffsetList'
+
+  # ----- R11 batch pass case -----
+  /matters/_batch:                            # POST-only + requestBody ✅
+    post:
+      summary: Batch create matters
+      description: Create up to 100 matters in one call with all-or-nothing semantics.
+      tags: [matter]
+      operationId: matter.batch_create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BatchCreateMattersReq'
+      responses:
+        '201':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeData'
+        '400':
+          description: "VALIDATION_ERROR: details.failed_index"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeError'
+
+  # ----- H deprecation pass case -----
+  /legacy_matters:                            # deprecated with guidance ✅
+    get:
+      summary: List matters (legacy)
+      description: Deprecated as of 2026-06-01. Removal planned 2026-09-01. Use GET /matters instead.
+      deprecated: true
+      tags: [matter]
+      operationId: matter.list_legacy
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnvelopeCursorList'
+      parameters:
+        - name: cursor
+          in: query
+          required: false
+          schema:
+            type: string

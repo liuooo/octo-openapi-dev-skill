@@ -71,7 +71,7 @@ include tools/octo-api/assets/openapi.mk
 | Detect changed paths | docs-only PR 跳过整套 | — |
 | Swag Annotation Coverage | handler @Router 覆盖 | ✅ |
 | Generate & Verify OpenAPI 3.1 | swag 生成 + drift 检测 | ✅ |
-| Spectral Lint | 19 条 OCTO 规则 + spectral:oas | ✅ |
+| Spectral Lint | 30 条 OCTO 规则 + spectral:oas | ✅ |
 | Breaking Change Check | oasdiff 检测 breaking | ✅ on error |
 | Toolchain Self-Test | 工具链自身回归 | ✅ |
 
