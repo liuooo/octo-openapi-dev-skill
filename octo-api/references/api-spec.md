@@ -140,25 +140,15 @@ envelope.EmptyResp          // 空对象，用于 Data[EmptyResp]（delete / 状
 
 ### handler 用法
 
-octo-lib 提供 envelope helper，所有响应必须通过它（不要直接 `c.JSON`）：
+octo-lib 提供 envelope helper，**禁直接 `c.JSON`**。成功走 `c.Response*`，失败走 `httperr.ResponseErrorL`（详见 D 章节）：
 
-```go
-// 成功响应：单条
-c.ResponseData(matter)                  // → envelope.Data[MatterResp]
-
-// 成功响应：空（delete / 状态机）
-c.ResponseOK()                          // → envelope.Data[EmptyResp]
-
-// 成功响应：cursor 列表
-c.ResponseCursor(matters, hasMore, nextCursor)
-
-// 成功响应：offset 列表
-c.ResponseOffset(matters, total, page, pageSize)
-
-// 失败响应：永远走 httperr 包（详见 D 章节）
-httperr.ResponseErrorL(c, errcode.ErrNotFound,
-    map[string]any{"resource": "matter"}, nil)
-```
+| 场景 | 调用 |
+|---|---|
+| 单条 | `c.ResponseData(matter)` |
+| 空响应（delete / 状态机）| `c.ResponseOK()` |
+| cursor 列表 | `c.ResponseCursor(items, hasMore, nextCursor)` |
+| offset 列表 | `c.ResponseOffset(items, total, page, pageSize)` |
+| 失败 | `httperr.ResponseErrorL(c, errcode.ErrNotFound, map[string]any{"resource": "matter"}, nil)` |
 
 ### 反模式
 
@@ -193,30 +183,26 @@ httperr.ResponseErrorL(c, errcode.ErrNotFound,
 
 ### Go struct 示例
 
+涵盖所有约束：必填 / 可选 / 时间 / URL / 数组 / bool / id。
+
 ```go
 type CreateMatterReq struct {
     Title        string   `json:"title"          binding:"required,max=200"`
-    Description  string   `json:"description,omitempty"`
     AssigneeUIDs []string `json:"assignee_uids,omitempty"`
     DueAt        *string  `json:"due_at,omitempty"   swaggertype:"string,date-time"`
-    IsUrgent     bool     `json:"is_urgent,omitempty"`
 }
 
 type MatterResp struct {
-    MatterID     string   `json:"matter_id"`
-    Title        string   `json:"title"`
-    Description  string   `json:"description"`
-    AssigneeUIDs []string `json:"assignee_uids"`
-    DueAt        *string  `json:"due_at,omitempty"`
-    AvatarURL    string   `json:"avatar_url,omitempty"   swaggertype:"string,uri"`
-    IsUrgent     bool     `json:"is_urgent"`
-    CreatedAt    string   `json:"created_at"             swaggertype:"string,date-time"`
-    UpdatedAt    string   `json:"updated_at"             swaggertype:"string,date-time"`
+    MatterID  string  `json:"matter_id"`
+    Title     string  `json:"title"`
+    IsUrgent  bool    `json:"is_urgent"`
+    AvatarURL string  `json:"avatar_url,omitempty"   swaggertype:"string,uri"`
+    CreatedAt string  `json:"created_at"             swaggertype:"string,date-time"`
 }
 ```
 
 要点（struct 里不一眼可见的约束）：
-- Go 标识符 PascalCase / `AssigneeUIDs` 这种是 Go 风格；**OpenAPI yaml 里的字段名取自 json tag**，必须 snake_case
+- Go 标识符 PascalCase（`AssigneeUIDs` / `AvatarURL`）；**OpenAPI yaml 里的字段名取自 json tag**，必须 snake_case
 - 可选字段：json tag 加 `omitempty`；语义上可 null → Go 类型用指针（`*string`）
 - 入参校验：`binding:"required,max=200"` 等 gin 标签
 
@@ -276,26 +262,16 @@ type MatterResp struct {
 
 ### handler 用法
 
+格式：`httperr.ResponseErrorL(c, errCode, detailsMap, hintMap)`。`details` / `hint` 都是 `map[string]any{...}`，传 `nil` 跳过。
+
 ```go
-import (
-    "github.com/Mininglamp-OSS/octo-server/pkg/errcode"
-    "github.com/Mininglamp-OSS/octo-server/pkg/httperr"
-)
+import "github.com/Mininglamp-OSS/octo-server/pkg/errcode"
+import "github.com/Mininglamp-OSS/octo-server/pkg/httperr"
 
-// 简单错误（无 details）
-httperr.ResponseErrorL(c, errcode.ErrAuthRequired, nil, nil)
-
-// 带 details 的错误
 httperr.ResponseErrorL(c, errcode.ErrValidation,
-    map[string]any{"field": "title", "reason": "exceeds 200 chars"}, nil)
-
-// 带 hint 的错误
-httperr.ResponseErrorL(c, errcode.ErrNotFound,
-    map[string]any{"resource": "matter"},
-    map[string]any{"hint": "Verify matter_id"})
+    map[string]any{"field": "title", "reason": "exceeds 200 chars"},
+    map[string]any{"hint": "Title must be ≤ 200 chars"})
 ```
-
-参数：`httperr.ResponseErrorL(c, errCode, detailsMap, hintMap)` —— details 跟 hint 都用 `map[string]any{...}`，传 `nil` 跳过。
 
 ### swag @Failure 标签
 
@@ -416,28 +392,15 @@ func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 
 ### 反模式
 
-```
-❌ 中文 Summary: @Summary 创建 matter
-✅ @Summary Create matter
-
-❌ Summary > 80 字符
-✅ ≤ 80，写不下用 Description
-
-❌ Description 跟 Summary 重复
-✅ Description 补充关键语义（幂等？副作用？默认值？）
-
-❌ camelCase ID: @ID createMatter
-✅ @ID matter.create
-
-❌ 多个 tag: @Tags matter, admin
-✅ 单 tag
-
-❌ 漏 @Failure
-✅ 401/403/404/500 至少齐
-
-❌ @Success 不用 envelope: @Success 200 {object} MatterResp
-✅ @Success 200 {object} envelope.Data[MatterResp]
-```
+| ❌ 错 | ✅ 对 |
+|---|---|
+| `@Summary 创建 matter`（中文） | `@Summary Create matter` |
+| `@Summary` > 80 字符 | ≤ 80；写不下挪 `@Description` |
+| `@Description` 跟 `@Summary` 重复 | `@Description` 补幂等性 / 副作用 / 默认值等 |
+| `@ID createMatter`（camelCase）| `@ID matter.create` |
+| `@Tags matter, admin`（多 tag）| 单 tag |
+| 漏 `@Failure` | 401/403/404/500 至少齐 |
+| `@Success 200 {object} MatterResp` | `@Success 200 {object} envelope.Data[MatterResp]` |
 
 ---
 
@@ -452,45 +415,25 @@ func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 | cursor | `cursor` (string, optional) + `page_size` (int, optional, default 20, max 100) | `Cursor string \`form:"cursor"\`` + `PageSize int \`form:"page_size,default=20" binding:"min=1,max=100"\`` |
 | offset | `page` (int, optional, default 1) + `page_size` (int, optional, default 20, max 100) | `Page int \`form:"page,default=1" binding:"min=1"\`` + `PageSize int \`form:"page_size,default=20" binding:"min=1,max=100"\`` |
 
-### 响应结构
+### 响应 pagination 字段 + swag
 
-cursor：
-```json
-{
-  "data": [...],
-  "pagination": {
-    "has_more": true,
-    "next_cursor": "eyJpZCI6MTIzfQ=="
-  }
-}
-```
+| 模式 | `pagination` 字段 | swag |
+|---|---|---|
+| cursor | `has_more` (bool) + `next_cursor` (string, 可省略 / null when `has_more=false`) | `// @Success 200 {object} envelope.CursorList[MatterResp]` |
+| offset | `total` (int) + `page` (int) + `page_size` (int) | `// @Success 200 {object} envelope.OffsetList[MatterResp]` |
 
-`next_cursor` 是不透明字符串（base64 编码的服务端状态），客户端原样回传。`has_more: false` 时 `next_cursor` 可省略或 null。
+`next_cursor` 是**不透明字符串**（base64 编码的服务端状态），客户端原样回传，不可在客户端解析。
 
-offset：
-```json
-{
-  "data": [...],
-  "pagination": {
-    "total": 1234,
-    "page": 1,
-    "page_size": 20
-  }
-}
-```
-
-### swag 注释
+swag 入参注释（除上面 @Success 外）：
 
 ```go
+// cursor 模式
 // @Param cursor    query string false "Cursor for next page"
 // @Param page_size query int    false "Page size, default 20, max 100"
-// @Success 200 {object} envelope.CursorList[MatterResp]
-```
 
-```go
+// offset 模式
 // @Param page      query int false "Page number, default 1"
 // @Param page_size query int false "Page size, default 20, max 100"
-// @Success 200 {object} envelope.OffsetList[MatterResp]
 ```
 
 ### 反模式
