@@ -558,6 +558,39 @@ paths:
               schema:
                 $ref: '#/components/schemas/Envelope_Data'
 
+  # ----- Non-JSON response content (R13 json-only) -----
+  /plain_success:                               # 200 text/plain → octo-response-success-json-only
+    get:
+      operationId: plain_success.get
+      summary: Returns plain text
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            text/plain:
+              schema:
+                type: string
+
+  /html_error:                                  # 400 text/html → octo-response-error-json-only
+    get:
+      operationId: html_error.get
+      summary: Returns html error page
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+        '400':
+          description: VALIDATION_ERROR
+          content:
+            text/html:
+              schema:
+                type: string
+
   # ----- Deprecated without guidance (H anti-pattern) -----
   /deprecated_no_guidance:
     get:

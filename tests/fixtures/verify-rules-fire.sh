@@ -52,6 +52,8 @@ expected = {
     ("octo-batch-post-only",         "/items/_batch"),
     ("octo-batch-requires-body",     "/nobody/_batch"),
     ("octo-error-description-known-code", "/raw_error"),
+    ("octo-response-success-json-only", "/plain_success"),
+    ("octo-response-error-json-only",  "/html_error"),
     ("octo-description-distinct",    "/dup_description"),
     ("octo-deprecated-needs-guidance", "/deprecated_no_guidance"),
     # resolved $ref violations report at components/schemas/<name>
