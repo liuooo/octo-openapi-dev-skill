@@ -178,7 +178,11 @@ paths:
                 $ref: '#/components/schemas/Envelope_Data'
 
   # ----- envelope violations -----
-  /raw_success:
+  # All 5 envelope structural failure modes; each triggers either
+  # octo-response-success-shape (2xx needs `data`) or
+  # octo-response-error-shape (4xx/5xx needs `error`).
+
+  /raw_success:                                 # $ref to non-envelope schema lacking `data`
     get:
       operationId: raw_success.get
       summary: Returns raw data
@@ -189,10 +193,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BadSchema'   # not Envelope → octo-response-uses-envelope
+                $ref: '#/components/schemas/BadSchema'
 
-  # Bare array response — no top-level $ref → octo-response-not-bare
-  /bare_array:
+  /bare_array:                                  # bare array, no top-level `data` property
     get:
       operationId: bare_array.get
       summary: Returns bare array
@@ -207,8 +210,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/BadSchema'
 
-  # Bare inline object response — no $ref → octo-response-not-bare
-  /bare_object:
+  /bare_object:                                 # inline object with non-`data` property
     get:
       operationId: bare_object.get
       summary: Returns bare inline object
@@ -224,7 +226,39 @@ paths:
                   foo:
                     type: string
 
-  /raw_error:
+  /wrong_envelope_in_success:                   # 200 returns Error envelope → lacks `data`
+    get:
+      operationId: wrong_envelope_in_success.get
+      summary: Wrong envelope direction (200 uses Error)
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Error'
+
+  /wrong_envelope_in_error:                     # 400 returns Data envelope → lacks `error`
+    get:
+      operationId: wrong_envelope_in_error.get
+      summary: Wrong envelope direction (400 uses Data)
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+        '400':
+          description: bad
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Envelope_Data'
+
+  /raw_error:                                   # 400 returns non-envelope schema lacking `error`
     get:
       operationId: raw_error.get
       summary: Returns raw error
@@ -241,7 +275,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BadSchema'   # not Error → octo-error-uses-envelope
+                $ref: '#/components/schemas/BadSchema'
 
   # ----- Boundary cases -----
   /empty_summary:                               # boundary: empty string is falsy → octo-summary-required

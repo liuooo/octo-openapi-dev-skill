@@ -153,47 +153,41 @@ rules:
   # Status codes are listed explicitly because spectral's jsonpath
   # implementation (jsonpath-plus) doesn't reliably support
   # `responses[?(@property.match(...))]` for property-name filtering.
-  octo-response-uses-envelope:
+  # Structural envelope check (R1): the response body must literally
+  # have a `data` property (for 2xx) or `error` property (for 4xx/5xx)
+  # at the top level. resolved: true follows $ref to the actual schema,
+  # so any of these forms get caught:
+  #   - bare array (type: array, no `data`) → fails 2xx rule
+  #   - bare inline object (type: object + custom properties) → fails
+  #   - $ref to non-envelope type → resolved schema lacks `data`/`error`
+  #   - wrong envelope direction (Error in 200, Data in 4xx) → fails
+  # The previous name-based check (`$ref` contains "Data"/"Error") was a
+  # proxy that passed any name happening to contain those substrings;
+  # this version is the literal spec contract.
+  octo-response-success-shape:
     description: |
-      Response schemas that DO use $ref must reference an envelope type
-      (Envelope/Data/CursorList/OffsetList for 2xx, Error for 4xx/5xx).
-      Note: bare array / inline object responses (no top-level $ref) are
-      a separate violation — see octo-response-not-bare. (R1).
+      2xx response body must be an envelope with `data` property at top
+      level (envelope.Data / envelope.CursorList / envelope.OffsetList).
+      Bare arrays / inline objects / non-envelope $refs all fail (R1).
     severity: error
-    resolved: false      # required to keep `$ref` literal instead of resolving
-    given: "$.paths[*][*].responses[*].content[*].schema"
+    resolved: true
+    given: "$.paths[*][*].responses[?(@property.match(/^2/))].content[*].schema"
     then:
-      field: "$ref"
-      function: octo-list-check
-      functionOptions:
-        mode: required-substring
-        list:
-          - Envelope
-          - Data
-          - CursorList
-          - OffsetList
-          - Error
-        message: "response $ref must reference envelope type (R1)"
-
-  # Bare array (type: array) / inline object (type: object + properties)
-  # both have NO top-level $ref, so octo-response-uses-envelope misses
-  # them. This rule fires whenever a response schema lacks $ref entirely,
-  # forcing the handler to wrap in envelope.Data / CursorList / OffsetList.
-  # severity: warn during migration — many legacy handlers c.JSON raw
-  # arrays/objects; flip to error once octo-lib envelope helpers landed
-  # and existing handlers migrated.
-  octo-response-not-bare:
-    description: |
-      Response schema must use $ref to an envelope type, not a bare
-      array/inline object. Lists go through envelope.CursorList[T] or
-      envelope.OffsetList[T]; single objects through envelope.Data[T] (R1).
-    severity: warn
-    resolved: false
-    given: "$.paths[*][*].responses[*].content[*].schema"
-    then:
-      field: "$ref"
+      field: properties.data
       function: truthy
-      message: "response schema must $ref an envelope type — bare array/object is wrong (R1)"
+      message: "2xx response must wrap payload in envelope (top-level `data` property required) (R1)"
+
+  octo-response-error-shape:
+    description: |
+      4xx/5xx response body must be an envelope with `error` property at
+      top level (envelope.Error). Bare or non-envelope responses fail (R1).
+    severity: error
+    resolved: true
+    given: "$.paths[*][*].responses[?(@property.match(/^[45]/))].content[*].schema"
+    then:
+      field: properties.error
+      function: truthy
+      message: "4xx/5xx response must wrap payload in envelope.Error (top-level `error` property required) (R1)"
 
   # ============================================================
   # H. @Security (R4)

@@ -27,7 +27,7 @@ with open(sys.argv[1]) as f:
 # (rule_code, expected_endpoint_path) — every OCTO rule should fire on at
 # least one of these. The endpoint path is the key under paths.
 expected = {
-    # primary cases
+    # primary cases (reported at paths/<endpoint>)
     ("octo-summary-required",        "/no_summary"),
     ("octo-summary-length-exceeded", "/long_summary"),
     ("octo-summary-english-verb",    "/lowercase_summary"),
@@ -37,11 +37,15 @@ expected = {
     ("octo-path-snake-case",         "/Users"),
     ("octo-path-param-id-suffix",    "/matters/{matter_no}"),
     ("octo-path-param-no-uid",       "/matters/{uid}"),
-    ("octo-response-uses-envelope",  "/raw_success"),
-    ("octo-response-not-bare",       "/bare_array"),
-    ("octo-response-not-bare",       "/bare_object"),
+    ("octo-response-success-shape",  "/bare_array"),
+    ("octo-response-success-shape",  "/bare_object"),
     ("octo-auth-has-401",            "/auth_no_401"),
     ("octo-auth-has-403",            "/auth_no_401"),
+    # resolved $ref violations report at components/schemas/<name>
+    ("octo-response-success-shape",  "BadSchema"),       # via /raw_success
+    ("octo-response-success-shape",  "Envelope_Error"),  # via /wrong_envelope_in_success
+    ("octo-response-error-shape",    "BadSchema"),       # via /raw_error
+    ("octo-response-error-shape",    "Envelope_Data"),   # via /wrong_envelope_in_error
     # boundary cases
     ("octo-summary-required",        "/empty_summary"),
     ("octo-summary-length-exceeded", "/summary_81_chars"),
@@ -65,10 +69,16 @@ schema_hits = set()
 for item in data:
     code = item.get("code", "")
     path = item.get("path", [])
+    # path-level violations: paths/<endpoint>/...
     if len(path) >= 2 and path[0] == "paths":
         endpoint = path[1]
         if (code, endpoint) in expected:
             path_hits.add((code, endpoint))
+    # resolved $ref violations: components/schemas/<name>/...
+    elif len(path) >= 3 and path[0] == "components" and path[1] == "schemas":
+        schema_name = path[2]
+        if (code, schema_name) in expected:
+            path_hits.add((code, schema_name))
     if code in schema_expected:
         schema_hits.add(code)
 
