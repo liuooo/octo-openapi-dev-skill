@@ -23,27 +23,40 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 OCTO 是多服务架构，**每个模块仓库一个独立服务**，各自一套 API 表面。客户端走统一 `OCTO_API_BASE_URL` 网关分流。
 
-| 服务 | 仓库 | 网关挂载 | 内部 spec 资源 / 动作（示意，非穷尽）|
-|---|---|---|---|
-| 核心 | `octo-server` | `/v1/...`（无前缀剥离）| matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
-| Matter LLM | `octo-matter` | `/matter/...` → 剥离后 `/api/v1/...` | matters / `matters/{id}/_extract` / `matters/{id}/timeline` / `matters/{id}/assignees` / `matters/{id}/channels` |
-| 智能摘要 | `octo-smart-summary` | `/summary/...` → 剥离后 `/api/v1/...` | summaries / templates / schedules / chat_candidates / member_candidates / `_infer` / internal/task_events / internal/worker_triggers |
+**网关挂载标准**:
 
-服务内部 spec **只写资源**（如 `templates`），不带服务名前缀（如**不要** `summary/templates`）—— 网关挂载点（`/summary/` `/matter/`）是部署层概念，由 nginx 加 / 剥，跟 OpenAPI spec 解耦。
+| 服务类型 | 网关挂载点 | 客户端 URL 形态 |
+|---|---|---|
+| 核心（`octo-server`）| `/api/` | `<host>/api/v1/<resource>` |
+| 子服务（`octo-matter` / `octo-smart-summary` / 其它）| `/<service>/api/` | `<host>/<service>/api/v1/<resource>` |
 
-**URL 一致性约束**:
+`<service>` 段使用仓库短名（`matter` 对应 `octo-matter`，`summary` 对应 `octo-smart-summary` 等）。网关剥离**整个挂载点（含 `/api/`）**后转发到服务，服务接收到的是 `/v1/<resource>`。
 
-- **`/v1/` 永远是 base URL 之后第一段**。`<host>/<service>/v1/...` ❌；`<host>/v1/<service>/...` 或 `<host>/v1/<resource>` ✅
-- **服务名要么不进 URL，要么在 `/v1/` 之后**。两种合法形态:
-  - Flat（资源名跨服务唯一）: `https://api.octo/v1/matters` —— 网关按资源名路由
-  - 服务段在 `/v1/` 之后: `https://api.octo/v1/matter/matters` —— 网关按第二段路由
-- **服务内部 spec 永远写 `/v1/<resource>`**，不带服务段。客户端看到的服务段（如 `/v1/matter/`）是网关层加的路由前缀，不进 service spec。
+**服务内部 spec 标准**:
+
+服务内部 OpenAPI spec 的路径**统一为 `/v1/<resource>`**。`/api/` 段属网关层，**不进 spec**；`<service>/` 段同理。`servers:` 块声明网关挂载位置：
+
+| 服务 | spec 路径 | `servers:` URL 示例 |
+|---|---|---|
+| `octo-server` | `/v1/<resource>` | `https://<host>/api` |
+| `octo-matter` | `/v1/<resource>` | `https://<host>/matter/api` |
+| `octo-smart-summary` | `/v1/<resource>` | `https://<host>/summary/api` |
+
+实现：Go 内部用 `r.Group("/v1")` 注册路由（不加 `/api/`）；swag main.go `@BasePath /v1`。跨服务 spec 路径形态完全一致，差异只在 `servers:` URL。
+
+**资源 / 动作示意**（spec 内部路径，非穷尽）:
+
+| 服务 | 资源 / 动作 |
+|---|---|
+| `octo-server` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
+| `octo-matter` | matters / `matters/{id}/_extract` / `matters/{id}/timeline` / `matters/{id}/assignees` / `matters/{id}/channels` |
+| `octo-smart-summary` | summaries / templates / schedules / chat_candidates / member_candidates / `_infer` / internal/task_events / internal/worker_triggers |
+
+**其它约束**:
+
+- **服务名不进 spec**。网关挂载点（`/summary/api/` `/matter/api/`）跟 OpenAPI spec 解耦，spec 描述本服务自身 `/v1/<resource>` 即可
 - **单服务内没有命名空间概念**。`/v1/internal/...` `/v1/admin/...` 等前缀按 A.2 "四角色"归入 audience / domain / 动作
 - 规范**逐仓库适用**: 每仓库 CI 独立跑
-
-> **历史债 1（spec 内部 `/api/v1/` 前缀）**：现 octo-matter / octo-smart-summary 内部都用 `r.Group("/api/v1")` 注册，客户端透过网关看到 `/matter/api/v1/...` `/summary/api/v1/...`，违 R12 "URL 以 `/v1/` 开头" —— 服务内部应改 `r.Group("/v1")`，不加 `/api/`。
->
-> **历史债 2（kebab-case 资源名）**：octo-smart-summary 用 `summary-templates` `summary-infer` 等 kebab-case 资源段，触发 `octo-path-snake-case` 规则。改造方向：去掉冗余 `summary-` 前缀，按 service 边界直接平铺为 `templates` / `_infer` / `schedules` / `chat_candidates` 等。
 
 ### A.2 URL 段的四角色
 
