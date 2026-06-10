@@ -18,7 +18,20 @@ description: |
 
 ## 1. 实现 / 修改 / 审查 endpoint 工作流
 
-接到 "加 / 改 / 审查 X 接口" 都按这套顺序 8 步走。详细规则在 `references/api-spec.md` 各章节，按步骤遇到决策点时读。审查场景 = 逐项对照本工作流 + 引用 R 编号报告通过 / 违规；修改场景 = 同步跑 §2 的 breaking 识别。
+接到 "加 / 改 / 审查 X 接口" 都按这套顺序 8 步走。详细规则在 `references/api-spec.md` 各章节，按步骤遇到决策点时读（R 编号速查表在该文件开头）。修改场景 = 同步跑 §2 的 breaking 识别。
+
+审查场景按下面格式输出（逐维度对照 + R 编号 + 实测）：
+
+| 维度 | 结论 | 说明 |
+|---|---|---|
+| URL / operationId（R6 / R10 / R12） | ✅ / ❌ | 违规点 + 修复建议 |
+| 响应 envelope（R1） | ✅ / ❌ | … |
+| 字段命名（R3 / R7 / R8） | ✅ / ❌ | … |
+| 错误码（R2 / R4） | ✅ / ❌ | … |
+| swag 标签（R13） | ✅ / ❌ | … |
+| 分页 / 批量（R5 / R11，如适用） | ✅ / ❌ | … |
+
+结尾附 `make openapi-check`（改动场景另加 `openapi-diff`）的实测结果，不要只凭目测下结论。
 
 | 步骤 | 决策内容 | 详见 |
 |---|---|---|
@@ -37,8 +50,8 @@ description: |
 |---|---|
 | **资源** | 见 `references/api-spec.md` A.1 各服务资源表（参考用，非穷尽） |
 | **动作** | create / list / get / update / delete / 状态机动词（close / reopen / archive / extract） |
-| **调用方** | Bot / User / Admin |
-| **鉴权** | Bearer（普通） / Bearer + OBO（代发） |
+| **调用方** | Bot / User / Admin（影响 A.2 受众段判断） |
+| **鉴权** | Bearer / 无（公开接口，需注明豁免原因；具体鉴权机制由仓库自定） |
 | **状态机** | 是 → RPC verb；否 → REST 标准 |
 
 > **示例（贯穿 1.2-1.7）**：用户说"删除 matter 接口" → 资源 = matter，动作 = delete，调用方 = Bot/User，鉴权 = Bearer，非状态机 → REST DELETE
@@ -64,9 +77,10 @@ make openapi-check
 # coverage → verify (gen + drift) → lint
 ```
 
-跑通后业务代码跟 swag 自动生成的 spec 文件一起进 git。CI 跑全套 6 个 job。
+跑通后业务代码跟 swag 自动生成的 spec 文件一起进 git。若启用 CI（可选增强，见 `references/adoption.md`），PR 自动跑全套 6 个 job。
 
 失败处理：
+- **环境 / 前置问题**：`openapi-gen` 每次自动跑 doctor 自检（也可单独 `make openapi-doctor`），按报错提示走 `references/adoption.md` 对应步骤 —— 不需要 AI 手动探测环境
 - **coverage 失败**：handler 缺 `@Router` 注释（按 api-spec.md E 章节模板补）
 - **verify 失败**：spec 没重生，跑 `make openapi-gen`
 - **lint 失败**：spectral 报具体规则 ID + 位置，按错误信息修

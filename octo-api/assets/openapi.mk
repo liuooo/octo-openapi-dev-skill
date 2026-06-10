@@ -31,6 +31,7 @@ openapi-help:
 	@echo "  make openapi-coverage  检查 handler 是否都有 @Router"
 	@echo "  make openapi-diff      跟 base ref diff，oasdiff 检测 breaking"
 	@echo "  make openapi-preview   本地生成 HTML 预览（Redoc）"
+	@echo "  make openapi-doctor    环境自检（注解/工具/baseline 前置是否就绪）"
 	@echo ""
 	@echo "Docs: $(OCTO_API_DIR)/references/toolchain.md"
 
@@ -64,10 +65,22 @@ openapi-coverage:
 # ----------------------------------------------------------------------
 # Generate OpenAPI 3.1 spec from Go source + swag annotations
 # ----------------------------------------------------------------------
-openapi-gen: openapi-install
+openapi-gen: openapi-doctor-gen openapi-install
 	$(SWAG) init -g main.go -d ./ -o $(OPENAPI_OUT_DIR) --v3.1
 	@bash $(OCTO_API_DIR)/scripts/normalize-spec.sh $(OPENAPI_OUT_DIR)
 	@echo "💡 Tip: 'make openapi-preview' renders the spec to a local HTML page."
+
+# ----------------------------------------------------------------------
+# Environment doctor — fail fast with adoption pointers instead of
+# cryptic swag/spectral errors. gen (and thus verify/check) runs the
+# gen-scope checks automatically; the standalone target also requires
+# the committed baseline.
+# ----------------------------------------------------------------------
+openapi-doctor:
+	@bash $(OCTO_API_DIR)/scripts/check-prereqs.sh $(OPENAPI_OUT_DIR) --require-baseline
+
+openapi-doctor-gen:
+	@bash $(OCTO_API_DIR)/scripts/check-prereqs.sh $(OPENAPI_OUT_DIR)
 
 # ----------------------------------------------------------------------
 # Verify: regenerate spec and assert no drift vs committed baseline.
@@ -125,4 +138,4 @@ openapi-preview: openapi-gen
 	@echo ""
 	@echo "✓ open $(OPENAPI_OUT_DIR)/index.html (macOS: open …; Linux: xdg-open …)"
 
-.PHONY: openapi-help openapi-install oasdiff-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview
+.PHONY: openapi-help openapi-install oasdiff-install openapi-coverage openapi-gen openapi-verify openapi-lint openapi-check openapi-diff openapi-preview openapi-doctor openapi-doctor-gen

@@ -27,6 +27,7 @@
 ## 验证接入
 
 ```bash
+make openapi-doctor   # 前置自检：6 项必做哪步没做会直接指出
 make openapi-check
 ```
 

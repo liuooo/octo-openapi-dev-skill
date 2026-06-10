@@ -24,6 +24,7 @@ lint:
 	@test -f octo-api/references/adoption.md                  || { echo "❌ missing references/adoption.md"; exit 1; }
 	@test -f octo-api/references/toolchain.md                 || { echo "❌ missing references/toolchain.md"; exit 1; }
 	@test -x octo-api/scripts/check-swag-coverage.sh          || { echo "❌ octo-api/scripts/check-swag-coverage.sh not executable"; exit 1; }
+	@test -x octo-api/scripts/check-prereqs.sh                || { echo "❌ octo-api/scripts/check-prereqs.sh not executable"; exit 1; }
 	@test -x octo-api/scripts/diff-openapi.sh                 || { echo "❌ octo-api/scripts/diff-openapi.sh not executable"; exit 1; }
 	@test -x octo-api/scripts/normalize-spec.sh               || { echo "❌ octo-api/scripts/normalize-spec.sh not executable"; exit 1; }
 	@test -f octo-api/assets/openapi.mk                       || { echo "❌ missing assets/openapi.mk"; exit 1; }

@@ -5,13 +5,33 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 | 章节 | 主题 |
 |---|---|
 | [A. URL 设计](#a-url-设计r6--r10) | R6 + R10 |
-| [B. Envelope 类型](#b-envelope-类型r1) | R1 |
+| [B. 响应 Envelope](#b-响应-enveloper1) | R1 |
 | [C. 字段与参数命名](#c-字段与参数命名r3--r7--r8) | R3 + R7 + R8 |
 | [D. 错误码](#d-错误码r2) | R2 |
 | [E. swag 注释](#e-swag-注释r13) | R13 |
 | [F. 分页](#f-分页r5) | R5 |
 | [G. 批量操作](#g-批量操作r11) | R11 |
 | [H. Deprecate 流程](#h-deprecate-流程) | — |
+
+### R1–R13 速查
+
+引用规则编号时按此表定位章节；R4 / R9 / R12 无独立章节，由 lint 直接把守。
+
+| R | 含义 | 章节 |
+|---|---|---|
+| R1 | 响应 envelope wire shape（2xx 顶层 `data`，4xx/5xx 顶层 `error`） | B |
+| R2 | 错误码 12 项固定 enum + `details` 结构化 | D |
+| R3 | 时间字段 `_at` 后缀（禁 `_time` / `_ts`） | C |
+| R4 | 鉴权 endpoint 声明 401/403（404/500 warn 级） | D / E |
+| R5 | 分页二选一：cursor `{has_more, next_cursor}` / offset `{total, page, page_size}` | F |
+| R6 | URL 设计：snake_case 路径段 + 四角色段 | A |
+| R7 | path 参数 `{<resource>_id}`，禁 `uid` / `_no` 等遗留 | A / C |
+| R8 | 字段命名：snake_case / `is_` 布尔 / `_url` 后缀 | C |
+| R9 | spec 必须 OpenAPI 3.1 | —（lint） |
+| R10 | operationId `<resource>[.<sub>].<verb>` 2–3 段 | A |
+| R11 | 批量走 `POST /<resource>/_batch`，all-or-nothing | G |
+| R12 | 版本：`/v1` 唯一，`@Router` 相对路径（禁 `/v{n}` 前缀进 path） | A / E |
+| R13 | swag 9 个必带标签（@Summary ≤80 / @Description 不重复 / 单 @Tags …） | E |
 
 ---
 
@@ -104,29 +124,29 @@ URL 一般形态（可叠加，每种最多一段）:
 
 ---
 
-## B. Envelope 类型（R1）
+## B. 响应 Envelope（R1）
 
-所有响应必须通过 octo-lib 的 envelope 类型包装 —— 永远不要裸返 `{...}` / `[...]` / 自造 `{msg: ...}` 结构。
+**契约是响应的 wire shape（JSON 结构），不是某个具体 Go 类型**。lint 校验生成 spec 的结构 —— 2xx 顶层必须有 `data`，4xx/5xx 顶层必须有 `error`；类型叫什么、内部怎么实现由各仓库自定。永远不要裸返 `[...]` / 自造 `{msg: ...}` 结构。
 
-### 5 种类型（octo-lib 统一定义）
+### 5 种响应形态（契约）
 
-```go
-envelope.Data[T]            // { "data": T }
-envelope.CursorList[T]      // { "data": [T], "pagination": {has_more, next_cursor} }
-envelope.OffsetList[T]      // { "data": [T], "pagination": {total, page, page_size} }
-envelope.Error              // { "error": {code, message, details, hint} }
-envelope.EmptyResp          // 空对象，用于 Data[EmptyResp]（delete / 状态机操作的成功响应）
-```
+| 形态 | wire shape |
+|---|---|
+| 单条对象 / 创建后返回新建对象 | `{ "data": {...} }` |
+| cursor 列表 | `{ "data": [...], "pagination": { "has_more": bool, "next_cursor": "..." } }` |
+| offset 列表 | `{ "data": [...], "pagination": { "total": n, "page": n, "page_size": n } }` |
+| 空成功（delete / 状态机动作） | `{ "data": {} }` |
+| 失败（所有 4xx / 5xx） | `{ "error": { "code", "message", "details", "hint" } }`（字段语义见 D 章） |
 
-### 选型对照
+swag `@Success` / `@Failure` 写法（类型为参考命名，见下节）：
 
-| 响应形态 | 用 | swag `@Success` 写法 |
-|---|---|---|
-| 单条对象 / 创建后返回新建对象 | `Data[T]` | `{object} envelope.Data[MatterResp]` |
-| 列表 + 无限滚动 / cursor 分页 | `CursorList[T]` | `{object} envelope.CursorList[MatterResp]` |
-| 列表 + 页码分页 / offset 分页 | `OffsetList[T]` | `{object} envelope.OffsetList[MatterResp]` |
-| delete / close / archive / 状态机动作成功 | `Data[EmptyResp]` | `{object} envelope.Data[EmptyResp]` |
-| 所有 4xx / 5xx 失败 | `Error` | `{object} envelope.Error` |
+| 响应形态 | swag 写法 |
+|---|---|
+| 单条 | `{object} envelope.Data[MatterResp]` |
+| cursor 列表 | `{object} envelope.CursorList[MatterResp]` |
+| offset 列表 | `{object} envelope.OffsetList[MatterResp]` |
+| 空成功 | `{object} envelope.Data[EmptyResp]` |
+| 失败 | `{object} envelope.Error` |
 
 ### cursor vs offset 选型
 
@@ -139,27 +159,27 @@ envelope.EmptyResp          // 空对象，用于 Data[EmptyResp]（delete / 状
 
 > 请求参数 / 响应 schema 见 F 章节。
 
-### handler 用法
+### 建议的统一返回抽象（参考 —— 实现由开发者决定）
 
-octo-lib 提供 envelope helper，**禁直接 `c.JSON`**。成功走 `c.Response*`，失败走 `httperr.ResponseErrorL`（详见 D 章节）：
+推荐每个仓库收敛到一组泛型 envelope 类型 + 统一响应 helper，swag 注解引用这些类型即可稳定产出合规 shape，并避免散落的 `c.JSON`。参考命名：
 
-| 场景 | 调用 |
-|---|---|
-| 单条 | `c.ResponseData(matter)` |
-| 空响应（delete / 状态机）| `c.ResponseOK()` |
-| cursor 列表 | `c.ResponseCursor(items, hasMore, nextCursor)` |
-| offset 列表 | `c.ResponseOffset(items, total, page, pageSize)` |
-| 失败 | `httperr.ResponseErrorL(c, errcode.ErrNotFound, map[string]any{"resource": "matter"}, nil)` |
+- 类型：`envelope.Data[T]` / `envelope.CursorList[T]` / `envelope.OffsetList[T]` / `envelope.Error` / `envelope.EmptyResp`
+- helper：成功 `c.ResponseData(x)` / `c.ResponseOK()` / `c.ResponseCursor(items, hasMore, nextCursor)` / `c.ResponseOffset(items, total, page, pageSize)`；失败统一走 `httperr.ResponseErrorL`（见 D 章）
+
+边界与现实：
+
+- lint **只看结构不看名字** —— 任何能让生成 schema 顶层出现 `data` / `error` 的实现都合规
+- 仓库尚无此抽象时：先在本仓库定义能产出该 shape 的类型，再写注解 —— **不要**在注解里引用不存在的类型，也**不要**让注解声称与实际响应不符的结构
+- 存量裸返接口会被 `octo-response-success-shape` / `octo-response-error-shape` 报 error —— 这是预期，迁移节奏见 `adoption.md`「存量仓库接入」
 
 ### 反模式
 
 ```go
-❌ c.JSON(200, gin.H{"matters": matters})           // 裸返
+❌ c.JSON(200, gin.H{"matters": matters})           // 裸返，顶层无 data
 ❌ c.JSON(200, matters)                             // 裸返数组
-❌ c.AbortWithStatusJSON(400, gin.H{"msg": "..."}) // 不用 envelope.Error
-❌ 自造 type Response struct { Code int; Data ...} // 重复造轮子
-✅ c.ResponseData(matter)
-✅ httperr.ResponseErrorL(c, errcode.ErrValidation, ...)
+❌ c.AbortWithStatusJSON(400, gin.H{"msg": "..."}) // 失败响应顶层无 error
+❌ 注解写 envelope.Data[X]、实际裸返                  // 注解与响应不符，spec 撒谎
+✅ 统一抽象产出 { "data": ... } / { "error": ... }
 ```
 
 ---
@@ -352,6 +372,8 @@ func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 ```
 
 > 客户端实际请求是 `DELETE /v1/matters/{matter_id}`（servers `/v1` + path `/matters/{matter_id}` 拼接）。
+>
+> `envelope.*` 为参考命名（B 章「建议的统一返回抽象」）—— lint 校验解析后的 schema 形态（顶层 `data` / `error`），类型名与实现由仓库自定。
 
 ### @Param 写法
 
