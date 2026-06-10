@@ -63,10 +63,13 @@ openapi-coverage:
 	bash $(OCTO_API_DIR)/scripts/check-swag-coverage.sh modules
 
 # ----------------------------------------------------------------------
-# Generate OpenAPI 3.1 spec from Go source + swag annotations
+# Generate OpenAPI 3.1 spec from Go source + swag annotations.
+# --parseDependencyLevel 1 resolves models referenced from dependency
+# modules (e.g. octo-lib pkg/envelope generics) — the importing file
+# still needs a (blank) import of that package; see api-spec.md §B.
 # ----------------------------------------------------------------------
 openapi-gen: openapi-doctor-gen openapi-install
-	$(SWAG) init -g main.go -d ./ -o $(OPENAPI_OUT_DIR) --v3.1
+	$(SWAG) init -g main.go -d ./ -o $(OPENAPI_OUT_DIR) --v3.1 --parseDependencyLevel 1
 	@bash $(OCTO_API_DIR)/scripts/normalize-spec.sh $(OPENAPI_OUT_DIR)
 	@echo "💡 Tip: 'make openapi-preview' renders the spec to a local HTML page."
 

@@ -159,17 +159,24 @@ swag `@Success` / `@Failure` 写法（类型为参考命名，见下节）：
 
 > 请求参数 / 响应 schema 见 F 章节。
 
-### 建议的统一返回抽象（参考 —— 实现由开发者决定）
+### 统一返回抽象（官方实现：octo-lib `pkg/envelope`）
 
-推荐每个仓库收敛到一组泛型 envelope 类型 + 统一响应 helper，swag 注解引用这些类型即可稳定产出合规 shape，并避免散落的 `c.JSON`。参考命名：
+官方共享实现在 `github.com/Mininglamp-OSS/octo-lib/pkg/envelope`（零依赖、无 gin，非 wkhttp 服务也能引用）：
 
 - 类型：`envelope.Data[T]` / `envelope.CursorList[T]` / `envelope.OffsetList[T]` / `envelope.Error` / `envelope.EmptyResp`
-- helper：成功 `c.ResponseData(x)` / `c.ResponseOK()` / `c.ResponseCursor(items, hasMore, nextCursor)` / `c.ResponseOffset(items, total, page, pageSize)`；失败统一走 `httperr.ResponseErrorL`（见 D 章）
+- wkhttp helper（成功侧）：单对象走 Context 方法 `c.ResponseData(x)` / `c.ResponseCreated(x)` / `c.ResponseEmpty()`（空成功 `{"data":{}}`；不叫 ResponseOK —— legacy `ResponseOK` 输出 `{"status":200}` 且有存量客户端依赖）；列表走泛型函数 `wkhttp.ResponseCursor(c, items, hasMore, nextCursor)` / `wkhttp.ResponseOffset(c, items, total, page, pageSize)`（`[]T` 编译期校验，nil 切片归一化为 `"data":[]`）
+- R5 入参：`c.GetCursorParams()` / `c.GetOffsetParams()`（page_size 默认 20、上限 100）
+- 失败侧无 helper：渲染走各服务注入的 `ErrorRenderer`（如 octo-server 的 `httperr.ResponseErrorL`，见 D 章）；`envelope.Error` 供 swag/客户端引用
+
+swag 注解引用 octo-lib 类型的两个前提（缺一不可）：
+
+1. 该 Go 文件 import envelope 包（handler 用 helper 时代码不直接引用类型，加 blank import 即可：`_ "github.com/Mininglamp-OSS/octo-lib/pkg/envelope"`）
+2. swag 带 `--parseDependencyLevel 1`（`openapi-gen` 已内置，实测仅慢 ~1s）
 
 边界与现实：
 
-- lint **只看结构不看名字** —— 任何能让生成 schema 顶层出现 `data` / `error` 的实现都合规
-- 仓库尚无此抽象时：先在本仓库定义能产出该 shape 的类型，再写注解 —— **不要**在注解里引用不存在的类型，也**不要**让注解声称与实际响应不符的结构
+- lint **只看结构不看名字** —— 任何能让生成 schema 顶层出现 `data` / `error` 的实现都合规；不便依赖 octo-lib 的仓库可自定义同形态类型
+- **不要**在注解里引用不存在的类型，也**不要**让注解声称与实际响应不符的结构
 - 存量裸返接口会被 `octo-response-success-shape` / `octo-response-error-shape` 报 error —— 这是预期，迁移节奏见 `adoption.md`「存量仓库接入」
 
 ### 反模式
