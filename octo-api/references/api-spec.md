@@ -23,11 +23,13 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 OCTO 是多服务架构，**每个模块仓库一个独立服务**，各自一套 API 表面。客户端走统一 `OCTO_API_BASE_URL` 网关分流。
 
-| 服务 | 仓库 | 资源 / 动作（示意，非穷尽）|
-|---|---|---|
-| 核心 | `octo-server` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
-| Matter LLM | `octo-matter` | matters / `_extract` |
-| 智能摘要 | `octo-smart-summary` | summaries / summary/templates / summary/schedules / summary/chat_candidates / summary/`_infer` |
+| 服务 | 仓库 | 网关挂载 | 内部 spec 资源 / 动作（示意，非穷尽）|
+|---|---|---|---|
+| 核心 | `octo-server` | `/v1/...`（无前缀剥离）| matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
+| Matter LLM | `octo-matter` | `/matter/...` → 剥离后 `/api/v1/...` | matters / `matters/{id}/_extract` / `matters/{id}/timeline` / `matters/{id}/assignees` / `matters/{id}/channels` |
+| 智能摘要 | `octo-smart-summary` | `/summary/...` → 剥离后 `/api/v1/...` | summaries / templates / schedules / chat_candidates / member_candidates / `_infer` / internal/task_events / internal/worker_triggers |
+
+服务内部 spec **只写资源**（如 `templates`），不带服务名前缀（如**不要** `summary/templates`）—— 网关挂载点（`/summary/` `/matter/`）是部署层概念，由 nginx 加 / 剥，跟 OpenAPI spec 解耦。
 
 **URL 一致性约束**:
 
@@ -39,7 +41,9 @@ OCTO 是多服务架构，**每个模块仓库一个独立服务**，各自一�
 - **单服务内没有命名空间概念**。`/v1/internal/...` `/v1/admin/...` 等前缀按 A.2 "四角色"归入 audience / domain / 动作
 - 规范**逐仓库适用**: 每仓库 CI 独立跑
 
-> **历史拓扑警告**: 现 nginx 把 octo-matter 挂在 `/matter/` 下，加上 octo-matter 内部用 `/api/v1/matters`，客户端看到 `/matter/api/v1/matters` 三层冗余 —— 违 `/v1/` 第一段约束。属历史债，迁移目标 `/v1/matter/matters` 或 `/v1/matters`。
+> **历史债 1（spec 内部 `/api/v1/` 前缀）**：现 octo-matter / octo-smart-summary 内部都用 `r.Group("/api/v1")` 注册，客户端透过网关看到 `/matter/api/v1/...` `/summary/api/v1/...`，违 R12 "URL 以 `/v1/` 开头" —— 服务内部应改 `r.Group("/v1")`，不加 `/api/`。
+>
+> **历史债 2（kebab-case 资源名）**：octo-smart-summary 用 `summary-templates` `summary-infer` 等 kebab-case 资源段，触发 `octo-path-snake-case` 规则。改造方向：去掉冗余 `summary-` 前缀，按 service 边界直接平铺为 `templates` / `_infer` / `schedules` / `chat_candidates` 等。
 
 ### A.2 URL 段的四角色
 
@@ -52,7 +56,7 @@ URL 一般形态（可叠加，每种最多一段）:
 | 角色 | 形态 | 何时用（heuristic）| 例 |
 |---|---|---|---|
 | **资源** | 复数 snake_case | 核心 entity。OCTO 已知资源建议复数（matters / users / groups / sessions / grants / scopes / clients / app_bots / channels …，非穷尽）| `/v1/users` `/v1/matters` |
-| **域限定** | 单数 / 复数均可 | "前缀拿掉，资源名在 OCTO 范围是否歧义？" 歧义 → 加 | `/v1/obo/grants`（`grants` 单独看歧义）`/v1/auth/sessions` `/v1/oidc/clients` |
+| **域限定** | 单数 / 复数均可 | "前缀拿掉，资源名**在本服务内**是否歧义？"歧义 → 加。跨服务同名靠 base URL 路由消歧，**不需要**前缀 | `/v1/obo/grants`（octo-server 内 `grants` 歧义：OIDC / RBAC / 文件权限 / OBO）`/v1/auth/sessions`（同服务内 `sessions` 歧义：用户 / 语音 / 认证）`/v1/oidc/clients` |
 | **受众标记** | 单数 / 复数均可 | "API 契约对不同消费方是否本质不同？"（SLA / 文档可见性 / SDK 生成）契约不同 → 加；纯权限差 → 走中间件 | `/v1/internal/notifications` `/v1/admin/users`（仅当与 `/v1/users` 契约真不同）|
 | **资源动作** | `_` 前缀 | 非 CRUD 动词 | `/v1/users/_search` `/v1/matters/_batch` |
 
@@ -108,7 +112,8 @@ URL 一般形态（可叠加，每种最多一段）:
 | `/v1/manager/adduser` | `POST /v1/manager/users` | 动词进 URL |
 | `/v1/admin/users`（同契约） | `/v1/users` + 鉴权中间件 | audience 仅做权限分流，无契约差 |
 | `/v1/manager/login` | `POST /v1/auth/sessions` | 认证流程跑错 audience |
-| `/v1/summary/summary_templates` | `/v1/summary/templates` | domain 段已说明域，资源段再带 `summary_` 冗余 |
+| `/v1/summary/summary_templates`（假设服务内确实需要 `summary/` qualifier）| `/v1/summary/templates` | domain 段已说明域，资源段再带 `summary_` 冗余 |
+| octo-smart-summary 内部写 `/v1/summary/templates` | `/v1/templates` | 服务自身就是 summary 域，**网关挂载点不该再进 spec**，直接平铺资源 |
 | `/v1/common/appconfig` | `/v1/app_configs` | "common" 不表 audience / domain |
 | `/v1/spaces/{id}/status/{status}` | `PATCH /v1/spaces/{id}` body 带 status | 参数塞路径 |
 | `/a/{x}/b/{y}/c/{z}/d/{w}` | 拆独立资源 | 嵌套 > 3 级 |
@@ -117,7 +122,7 @@ URL 一般形态（可叠加，每种最多一段）:
 
 | ❌ 错 | ✅ 对 | 触发规则 |
 |---|---|---|
-| `/sendMessage` / `/Users` / `/summary-templates` | `/v1/messages` / `/v1/users` / `/v1/summary/templates` | `octo-path-snake-case` |
+| `/sendMessage` / `/Users` / `/summary-templates` | `/v1/messages` / `/v1/users` / `/v1/templates`（smart-summary 内）或 `/v1/summary_templates`（compound）| `octo-path-snake-case`（kebab-case 触发）|
 | `/matters/{uid}` / `/matters/{matter_no}` | `/matters/{matter_id}` | `octo-path-param-no-uid` + `-id-suffix` |
 | `getMatters` / `matter_create` / `matter` / `a.b.c.d` | `matter.list` / `matter.create` / `matter.<verb>` / 拆 | `octo-operation-id-format` |
 
