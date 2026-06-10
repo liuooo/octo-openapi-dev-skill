@@ -6,7 +6,7 @@ description: |
   触发场景（按需读对应 reference）：
   - 实现新 endpoint："加一个 X 接口" / "设计 API" / "新建 endpoint" → 读 references/api-spec.md，按本文工作流走
   - 修改/审查 endpoint："改这个接口" / "审查这个 endpoint" → 读 references/api-spec.md，跑 `make openapi-diff` 识别 breaking
-  - 接入新仓库："给 X 仓库加入这套工具链" → 读 references/adoption.md（一次性 10 项配置）
+  - 接入新仓库："给 X 仓库加入这套工具链" → 读 references/adoption.md（6 必做 + 可选增强）
   - 工具命令咨询："openapi-check 是什么"、"怎么跑 lint" → 读 references/toolchain.md
 
   范围：API 设计 + 实现 + 接入 + 本地校验。AI 直接生成 Go 代码 + swag 注释 + spec 修改 + 跑 make 命令。breaking change 由 `make openapi-diff`（oasdiff）自动检测。**不在范围**：部署、contract test。
@@ -28,9 +28,9 @@ description: |
 
 ---
 
-## 1. 实现新 endpoint 工作流
+## 1. 实现 / 修改 / 审查 endpoint 工作流
 
-接到 "加一个 X 接口" → 顺序 8 步。详细规则在 `references/api-spec.md` 各章节，按步骤遇到决策点时读。
+接到 "加 / 改 / 审查 X 接口" 都按这套顺序 8 步走。详细规则在 `references/api-spec.md` 各章节，按步骤遇到决策点时读。审查场景 = 逐项对照本工作流 + 引用 R 编号报告通过 / 违规；修改场景 = 同步跑 §2 的 breaking 识别。
 
 | 步骤 | 决策内容 | 详见 |
 |---|---|---|
@@ -48,7 +48,7 @@ description: |
 
 | 维度 | 取值 |
 |---|---|
-| **资源** | matter / message / group / thread / file / bot / event / user / space / ... |
+| **资源** | 见 `references/api-spec.md` A.1 各服务资源表（参考用，非穷尽） |
 | **动作** | create / list / get / update / delete / 状态机动词（close / reopen / archive / extract） |
 | **调用方** | Bot / User / Admin |
 | **鉴权** | Bearer（普通） / Bearer + OBO（代发） |
@@ -113,43 +113,11 @@ AI 看到 🔴 输出时**主动提示用户**：
 
 ---
 
-## 3. 审查 endpoint
+## 3. AI 工作元规约
 
-接到"审查这个接口"时，按 1 章 7 要点逐项对照 `references/api-spec.md`：
+接 endpoint 任务时除工作流外的元行为约束：
 
-1. URL & operationId → A 章节
-2. envelope → B
-3. 字段命名 → C
-4. 错误码 → D
-5. swag 注释 → E
-6. 分页（list endpoint）→ F
-7. 批量（_batch endpoint）→ G
-8. 跑 `make openapi-check`，lint 指出剩余问题
-
-逐项报告通过 / 违规 + 引用规则编号（R6 / R7 / R8 ...）。
-
----
-
-## 4. AI 输出规约
-
-实现 endpoint 时，AI 按以下顺序工作，**不要跳步**：
-
-1. **先解析需求**（资源/动作/调用方/鉴权/是否状态机）让用户确认
-2. **输出按要点填好的具体值**（见 1.2 示例格式）—— 决策点先读 `references/api-spec.md` 对应章节
-3. **写 swag 注释**（按 api-spec.md E 模板，9 标签齐全）+ **必要的 Go struct**（按 C 命名规则）
-4. **handler 实现交给开发者** —— 本 skill 不规定业务代码风格
-5. **完成后提醒**：跑 `make openapi-check`
-
-**绝对不做**：
-- ❌ camelCase 字段 / 单数资源 / 裸 error 结构
-- ❌ 省略 swag 标签
-- ❌ 自造错误码（永远从 api-spec.md D 12 项中选）
-- ❌ 把"规范没说的"当规则告诉用户
-
-**绝对要做**：
-- ✅ 接到任务先解析需求再填要点
-- ✅ 引用 R 编号说明设计依据（"按 R6，资源段要复数所以用 /matters"）
-- ✅ 遇到要点先读 `references/api-spec.md` 对应章节，再下结论
-- ✅ 改 endpoint 时主动跑 `make openapi-diff` 识别 breaking
-- ✅ 提示用户跑 `make openapi-check`
-- ✅ 不确定的让 check 报错指出，不发明
+- **引用规则编号说明设计依据**（"按 R6 资源段要复数所以用 `/matters`"）—— 让用户能追溯
+- **遇决策点先读 `references/api-spec.md` 对应章节再下结论** —— 不要凭印象
+- **不发明"规范没说的"** —— 不确定的让 `make openapi-check` 报错指出，而非编规则
+- **handler 业务实现不规定** —— 本 skill 只管 API 形态（URL / schema / 错误码 / swag），实现交给开发者

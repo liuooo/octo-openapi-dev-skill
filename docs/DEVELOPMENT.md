@@ -35,6 +35,20 @@ bash tests/fixtures/verify-rules-fire.sh                # 改 octo-api/assets/sp
 3. **更新 CHANGELOG.md** 描述新规则
 4. **bump VERSION** 按 semver（新规则属 minor）
 
+### octo-list-check function 的 5 种 mode
+
+`octo-api/assets/functions/octo-list-check.js` 覆盖大部分 list 类规则，**不需要**为新规则写新 JS。在 `spectral.yaml` 用 `function: octo-list-check` + `functionOptions.mode` 配置即可：
+
+| mode | 行为 | 用例 |
+|---|---|---|
+| `forbidden` | 值等于列表任一项 → 违规 | 禁用 path 参数命名（uid / short_id）|
+| `forbidden-segment` | 值按 `/` 拆分后任一 segment 在列表里 → 违规 | （目前无 — 资源单数检查已挪到 doc）|
+| `required-prefix` | 值必须以列表中某项开头 | 布尔字段前缀（is_ / has_ / can_）|
+| `required-suffix` | 值必须以列表中某项结尾 | 时间字段后缀（_at / _date）|
+| `required-substring` | 值必须包含列表中某项 | envelope `$ref` 含 Envelope / Data / Error |
+
+只有当 5 种 mode + spectral 内置（pattern / truthy / length）都表达不了时，才写新 JS function：放 `octo-api/assets/functions/<name>.js`（ES Module + `export default`），在 `spectral.yaml` 顶部 `functions:` 列表加，配单测 `tests/functions/<name>.test.mjs`，加进 `tests/run.sh`。
+
 ## 加新 reference 文档
 
 `octo-api/references/<topic>.md` 新建后：
