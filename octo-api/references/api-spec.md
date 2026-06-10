@@ -25,13 +25,13 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 **URL 分层**: 客户端看到的是 `<host>/[<service>/]api/v1/<resource>`，但 **service spec 只描述 `/v1/<resource>` 这一段**。`<service>/` 与 `/api/` 由网关层加（部署管），不进 OpenAPI；Go 内部 `r.Group("/v1")` + swag `@BasePath /v1`。
 
-| 服务 | 网关挂载 | `servers:` URL | spec 内部资源（非穷尽）|
+| 服务 | 网关挂载 | `servers:` URL | 资源域（示例）|
 |---|---|---|---|
-| `octo-server` | `/api/` | `https://<host>/api` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
-| `octo-matter` | `/matter/api/` | `https://<host>/matter/api` | matters / `matters/{id}/_extract` / `matters/{id}/timeline` / `matters/{id}/assignees` / `matters/{id}/channels` |
-| `octo-smart-summary` | `/summary/api/` | `https://<host>/summary/api` | summaries / templates / schedules / chat_candidates / member_candidates / `_infer` / internal/task_events / internal/worker_triggers |
+| `octo-server` | `/api/` | `https://<host>/api` | 核心 IM / 协作资源（matters / users / groups / messages / threads / ...）|
+| `octo-matter` | `/matter/api/` | `https://<host>/matter/api` | matters + 子资源动作（`matters/{id}/_extract` / `.../timeline` / `.../assignees` 等）|
+| `octo-smart-summary` | `/summary/api/` | `https://<host>/summary/api` | summaries + 配套（templates / schedules / `_infer`）+ internal/* |
 
-单服务内**没有命名空间**——`/v1/internal/...` `/v1/admin/...` 等前缀按 A.2 四角色归 audience / domain / 动作。规范**逐仓库适用**，每仓库 CI 独立跑。
+各服务自有资源域，仓库自决；新增模块按本规范设计自己的 `/v1/<resource>`。单服务内**没有命名空间**——`/v1/internal/...` `/v1/admin/...` 等前缀按 A.2 四角色归 audience / domain / 动作。规范**逐仓库适用**，每仓库 CI 独立跑。
 
 ### A.2 URL 段的四角色
 
@@ -85,7 +85,7 @@ URL 一般形态（可叠加，每种最多一段）:
 要求:
 - lowercase snake_case
 - `.` 分隔（不用 `_` / `-`）
-- verb 动词原形（add / remove / create / list / get / update / delete / close / reopen / archive / extract …）
+- verb 动词原形（CRUD: create / list / get / update / delete；子资源: add / remove；状态机: close / archive 等）
 - 跟 swag `@ID` 标签完全一致
 
 ### A.6 设计陷阱（doc 反例，PR review 拦截）
