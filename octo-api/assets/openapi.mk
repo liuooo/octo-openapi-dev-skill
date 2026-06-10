@@ -104,10 +104,25 @@ openapi-lint:
 	npx -y @stoplight/spectral-cli@latest lint $(OPENAPI_OUT_DIR)/swagger.yaml --ruleset $(OCTO_API_DIR)/assets/spectral.yaml --fail-severity error
 
 # ----------------------------------------------------------------------
-# Four-gate check (run before pushing)
+# Four-gate check (run before pushing).
+# Runs ALL gates and aggregates instead of using make prerequisites —
+# prerequisites stop at the first failure, which on staged-migration
+# repos (coverage red for months) would mask every verify/lint finding
+# behind it.
 # ----------------------------------------------------------------------
-openapi-check: openapi-coverage openapi-verify openapi-lint
-	@echo "✅ OpenAPI four-gate check passed (coverage → gen → verify → lint)"
+openapi-check:
+	@C=PASS; V=PASS; L=PASS; FAILED=0; \
+	$(MAKE) --no-print-directory openapi-coverage || { C=FAIL; FAILED=1; }; \
+	$(MAKE) --no-print-directory openapi-verify   || { V=FAIL; FAILED=1; }; \
+	$(MAKE) --no-print-directory openapi-lint     || { L=FAIL; FAILED=1; }; \
+	echo ""; \
+	echo "═══ openapi-check gate summary ═══"; \
+	[ $$C = PASS ] && echo "  ✅ coverage" || echo "  ❌ coverage"; \
+	[ $$V = PASS ] && echo "  ✅ verify (gen + drift)" || echo "  ❌ verify (gen + drift)"; \
+	[ $$L = PASS ] && echo "  ✅ lint" || echo "  ❌ lint"; \
+	echo ""; \
+	if [ $$FAILED -eq 1 ]; then echo "❌ openapi-check failed — fix the ❌ gates above"; exit 1; fi; \
+	echo "✅ OpenAPI four-gate check passed (coverage → gen → verify → lint)"
 
 # ----------------------------------------------------------------------
 # Install oasdiff CLI if missing (semantic OpenAPI diff, breaking detection)

@@ -7,7 +7,7 @@
 | 命令 | 用途 | 何时跑 |
 |---|---|---|
 | `make openapi-help` | 列所有 `openapi-*` 命令 + 一句话说明 | 忘记某个命令时 |
-| `make openapi-check` | 一键校验：coverage → verify (gen + drift) → lint | 提交代码前 |
+| `make openapi-check` | 一键校验：coverage → verify (gen + drift) → lint。**跑完全部闸再汇总**，不在第一道失败就停（存量仓库 coverage 长期红时不遮蔽 lint/verify 结果） | 提交代码前 |
 | `make openapi-gen` | 重生 `docs/openapi/swagger.{yaml,json,docs.go}` | 改了 API 注释后 |
 | `make openapi-lint` | 单独跑 spectral 校验 | debug lint 错误时迭代用 |
 | `make openapi-verify` | gen + drift 检测 | 单独验证 spec 跟 git 同步 |
