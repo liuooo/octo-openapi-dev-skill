@@ -1,30 +1,18 @@
 ---
 name: octo-api
 description: |
-  指导 AI 在 OCTO 项目中接入工具链、设计、实现、审查、修改 OpenAPI / swag endpoint。接到任务时先识别场景，再读对应 reference 文档拿详细规则，然后按工作流写代码 + swag 注释，最后跑 `make openapi-check` 校验。
+  OCTO 项目 OpenAPI / swag endpoint 设计、实现、审查、修改、接入工具链。触发场景：
 
-  触发场景（按需读对应 reference）：
-  - 实现新 endpoint："加一个 X 接口" / "设计 API" / "新建 endpoint" → 读 references/api-spec.md，按本文工作流走
-  - 修改/审查 endpoint："改这个接口" / "审查这个 endpoint" → 读 references/api-spec.md，跑 `make openapi-diff` 识别 breaking
-  - 接入新仓库："给 X 仓库加入这套工具链" → 读 references/adoption.md（6 必做 + 可选增强）
-  - 工具命令咨询："openapi-check 是什么"、"怎么跑 lint" → 读 references/toolchain.md
+  - **加 / 改 / 审查 endpoint**："加一个 X 接口" / "设计 API" / "审查这个 endpoint" → 读 `references/api-spec.md`，按工作流走，跑 `make openapi-check`；改 endpoint 时跑 `make openapi-diff` 看 breaking
+  - **接入新仓库**："给 X 仓库加入这套工具链" → 读 `references/adoption.md`
+  - **工具命令咨询**："openapi-check 是什么" / "怎么跑 lint" → 读 `references/toolchain.md`
 
-  范围：API 设计 + 实现 + 接入 + 本地校验。AI 直接生成 Go 代码 + swag 注释 + spec 修改 + 跑 make 命令。breaking change 由 `make openapi-diff`（oasdiff）自动检测。**不在范围**：部署、contract test。
+  范围：API 形态（URL / schema / 错误码 / swag）+ 本地校验。**不在范围**：handler 业务实现、部署、contract test。
 ---
 
 # Octo API skill
 
-设计 endpoint 时按工作流写 Go struct + swag 注释，跑 `make openapi-check` 校验，错误按提示修。详细规则按需读 `references/`。
-
-## 何时读什么
-
-| 场景 | 读 | 然后做 |
-|---|---|---|
-| 实现新 endpoint | `references/api-spec.md`（A-H 章节按要点用）| 按 1 章 8 步工作流走 |
-| 修改 endpoint | `references/api-spec.md` 相关章节 | 跑 `make openapi-diff` 识别 breaking |
-| 审查 endpoint | `references/api-spec.md` | 按要点逐项检查 + 跑 `make openapi-check` |
-| 接入新仓库到本工具链 | `references/adoption.md` | 10 项一次性配置 |
-| 工具命令 / 配置咨询 | `references/toolchain.md` | 按命令清单跑 |
+设计 endpoint 时按工作流写 Go struct + swag 注释，跑 `make openapi-check` 校验，错误按提示修。详细规则按需读 `references/api-spec.md`。
 
 ---
 
@@ -40,8 +28,7 @@ description: |
 | 1.4 | 字段 / 参数命名 | `references/api-spec.md` C |
 | 1.5 | 错误码选择 | `references/api-spec.md` D |
 | 1.6 | swag 注释 | `references/api-spec.md` E |
-| 1.7 | 列表分页（list 时）| `references/api-spec.md` F |
-| 1.7 | 批量操作（_batch 时）| `references/api-spec.md` G |
+| 1.7 | 分页（list）/ 批量（_batch），按需 | `references/api-spec.md` F / G |
 | 1.8 | 本地校验：`make openapi-check` | — |
 
 ### 1.1 解析需求
@@ -74,10 +61,10 @@ description: |
 
 ```bash
 make openapi-check
-# 4 道闸：coverage → verify (gen + drift) → lint
+# coverage → verify (gen + drift) → lint
 ```
 
-跑通后业务代码跟 swag 自动生成的 spec 文件一起进 git。CI 6 道闸会自动跑全套。
+跑通后业务代码跟 swag 自动生成的 spec 文件一起进 git。CI 跑全套 6 个 job。
 
 失败处理：
 - **coverage 失败**：handler 缺 `@Router` 注释（按 api-spec.md E 章节模板补）

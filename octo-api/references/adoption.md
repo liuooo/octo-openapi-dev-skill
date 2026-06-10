@@ -19,11 +19,10 @@
 
 | 项 | 何时启用 | 做法 |
 |---|---|---|
-| **CI workflow** | 想让 PR 自动跑 4 道闸 + breaking check | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
+| **CI workflow** | 想让 PR 自动跑 openapi-check + breaking check | `cp tools/octo-api/assets/templates/openapi-workflow.yml .github/workflows/openapi.yml` |
 | **PR 模板** | 想让 PR 描述有 API Change 提示 | 把 `tools/octo-api/assets/templates/PR_TEMPLATE.md` 的 "API Changes" 段**合并**到现有 `.github/PULL_REQUEST_TEMPLATE.md`（**不要**直接覆盖；仓库通常已有 PR template）|
 | **branch protection** | 想让 CI 失败时阻断 PR 合并 | repo Settings → Rules → Rulesets 加 required check：`Detect changed paths` / `Swag Annotation Coverage` / `Generate & Verify OpenAPI 3.1` / `Spectral Lint` / `Toolchain Self-Test`（**不**含 `Breaking Change Check` — 它是 informational）|
 | **release-drafter** path filter | 用 release-drafter 想让 spec 改动单独分类 | 配置把 `docs/openapi/swagger.*` 改动标 "API Change" |
-| **AI 助手接入** | 想让 Claude Code / OpenClaw 自动按 SKILL 工作流写 endpoint | 见下面 "AI 工具部署" |
 
 ## 验证接入
 
@@ -58,42 +57,6 @@ make openapi-check
 
 期间 PR 仍能合（因为 coverage 没进 required check），不会卡所有人。等 100% 达成再启用，保证未来 PR 不退化。
 
-## AI 工具部署（让 AI 用上本 skill）
+## 接入判断
 
-SKILL.md + references/ 是 AI 助手知识包。当前支持两个框架，**共用同一份 SKILL.md 格式**（Anthropic Agent Skills 标准）。
-
-### Claude Code
-
-```bash
-# 项目共享（推荐，commit 进仓库团队自动可用）
-mkdir -p .claude/skills && ln -s ../../tools/octo-api .claude/skills/octo-api
-
-# 个人级
-ln -s $(pwd)/tools/octo-api ~/.claude/skills/octo-api
-```
-
-### OpenClaw
-
-```bash
-# workspace 级（项目内）
-openclaw skills install ./tools/octo-api
-
-# 全局级（所有项目可见）
-openclaw skills install ./tools/octo-api --global
-```
-
-> OpenClaw 不能直接 `openclaw skills install git:liuooo/octo-openapi-dev-skill@main`，因为本仓库的 SKILL.md 在 `octo-api/` 子目录而不是根目录，OpenClaw git 安装要求 root 有 SKILL.md。所以用本地路径安装（指向 install.sh 装好的 `tools/octo-api/`）。
-
-部署后 AI 接到"加 endpoint"等触发场景时，按 SKILL.md 工作流走，按需读 references/ 详细规则。两个框架可以同时安装，互不影响。
-
-## 持续开发
-
-每加 / 改一个 endpoint，按 `SKILL.md` 的工作流走，详细规则查 `references/api-spec.md`，命令速查 `references/toolchain.md`。
-
-## 不接入的仓库
-
-非 API 提供方（如纯前端 / 文档仓库 / SDK）**不需要**做以上配置。本工具链仅针对：
-- 写 Go handler 暴露 HTTP API 的 server
-- 用 swag 注释生成 OpenAPI spec
-
-接入判断：仓库内**有 `main.go` + `modules/*` 含 gin handler**。
+本工具链只针对**写 Go handler 暴露 HTTP API 的 server**（仓库内有 `main.go` + `modules/*` 含 gin handler）。纯前端 / 文档 / SDK 等非 API 提供方不需要接入。

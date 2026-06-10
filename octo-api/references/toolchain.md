@@ -7,7 +7,7 @@
 | 命令 | 用途 | 何时跑 |
 |---|---|---|
 | `make openapi-help` | 列所有 `openapi-*` 命令 + 一句话说明 | 忘记某个命令时 |
-| `make openapi-check` | 一键 4 道闸（coverage → verify → lint） | 提交代码前 |
+| `make openapi-check` | 一键校验：coverage → verify (gen + drift) → lint | 提交代码前 |
 | `make openapi-gen` | 重生 `docs/openapi/swagger.{yaml,json,docs.go}` | 改了 API 注释后 |
 | `make openapi-lint` | 单独跑 spectral 校验 | debug lint 错误时迭代用 |
 | `make openapi-verify` | gen + drift 检测 | 单独验证 spec 跟 git 同步 |
@@ -77,57 +77,6 @@ include tools/octo-api/assets/openapi.mk
 
 repo admin 把 5 个 ✅ 的 job 加入 branch ruleset 的 required check 即生效（详见 `adoption.md` 可选增强）。
 
-## 运行时暴露 /swagger endpoint（可选）
+## 运行时暴露 /swagger endpoint
 
-设计意图是让客户端（octo-cli / app / SDK 生成器）**运行时拉 spec**，跟 server 部署版本天然对齐。
-
-**当前默认状态**：未启用。`docs/openapi/docs.go` 由 swag 自动生成但**没人 import**。
-
-**启用步骤**：
-
-1. `main.go` 加 swag 全局注解（详见 `api-spec.md` E 章节末尾 "全局 main.go 必带"）
-2. `main.go` 加 import：
-   ```go
-   import (
-       _ "github.com/<org>/<repo>/docs/openapi"  // 触发 swag.Register
-       "github.com/swaggo/gin-swagger"
-       "github.com/swaggo/files"
-   )
-   ```
-3. router 注册：
-   ```go
-   r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-   ```
-4. 装依赖：`go get github.com/swaggo/gin-swagger github.com/swaggo/files`
-5. 起服务，访问 `/swagger/index.html` 看 UI / `/swagger/doc.json` 拉 spec
-
-**触发实施的条件**（满足任一）：
-- 客户端方明确要求运行时拉 spec
-- 接入 OpenAPI viewer（如 Stoplight Studio）
-- 多个客户端 SDK 自动生成需要
-
-在那之前 `docs.go` 留着不动 —— swag 必然产物，不影响其它流程。
-
-## 文件位置约定
-
-skill 包 `tools/octo-api/` 内部结构（按 skill-creator 标准）：
-
-```
-tools/octo-api/
-├── SKILL.md                   入口（AI 触发 + 工作流）
-├── references/                按需加载的详细文档
-│   ├── api-spec.md            OpenAPI 规范 A-H 章节
-│   ├── adoption.md            接入新仓库的 10 项步骤
-│   └── toolchain.md           本文件 — 命令 / 配置参考
-├── scripts/                   AI / 开发者可执行脚本
-│   ├── check-swag-coverage.sh
-│   └── diff-openapi.sh
-└── assets/                    配置 / 模板 / fixture
-    ├── openapi.mk             Makefile target（被项目 include）
-    ├── spectral.yaml          spectral 规则集
-    ├── functions/             spectral 自定义 JS function
-    ├── templates/             CI workflow + PR template 模板
-    └── test-fixtures/         规则集回归测试
-```
-
-接入到新仓库时整目录复制（详见 `adoption.md`）。
+默认未启用（`docs/openapi/docs.go` swag 自动生成但没人 import）。若需运行时让客户端拉 spec（SDK 生成器 / 在线 viewer），按 [swag 官方文档](https://github.com/swaggo/swag#general-api-info) 在 `main.go` 加 import + 在 router 加 `r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))`。

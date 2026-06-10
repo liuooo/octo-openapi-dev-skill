@@ -75,20 +75,19 @@ URL 一般形态（可叠加，每种最多一段）:
 
 > swag `@Router` 写**相对路径**（不含 `/v1`），完整写法见 E 章节。
 
-### A.5 operationId（R10）
+### A.5 operationId 例
+
+格式约束已在 A.3 列；本节给具体例 + verb 选择 + swag 对齐：
 
 | 层数 | 格式 | 例 |
 |---|---|---|
 | 2 层（标准 CRUD） | `<resource>.<verb>` | `matter.create` / `matter.list` / `matter.delete` |
 | 3 层（子资源 / 状态机） | `<resource>.<sub>.<verb>` | `matter.assignee.add` / `matter.close` / `matter.transition` |
 
-要求:
-- lowercase snake_case
-- `.` 分隔（不用 `_` / `-`）
 - verb 动词原形（CRUD: create / list / get / update / delete；子资源: add / remove；状态机: close / archive 等）
 - 跟 swag `@ID` 标签完全一致
 
-### A.6 设计陷阱（doc 反例，PR review 拦截）
+### A.6 反模式（doc 反例，PR review 拦截）
 
 格式问题由 A.3 的 lint 规则抓；下列是规则抓不到、需 review 判断的设计错误：
 
@@ -178,21 +177,21 @@ httperr.ResponseErrorL(c, errcode.ErrNotFound,
 
 所有 schema 字段、path/query 参数都必须遵守命名约定。spectral lint 会强制检查，不合规则 PR 阻断。
 
-### 字段类型 → 命名规则
+### 字段命名 + Go 类型 + swaggertype 对照
 
-| 字段类型 | 规则 | 例 |
-|---|---|---|
-| 路径参数 | `<resource>_id` 必（R7） | `matter_id` / `user_id` / `group_id` |
-| 普通字段 | snake_case 必（R8） | `title` / `description` / `page_size` |
-| 布尔字段 | `is_` / `has_` / `can_` 前缀必（R8） | `is_active` / `has_more` / `can_edit` |
-| 时间字段 | `_at` 后缀（R3）；类型 `string`，format `date-time`，RFC3339 | `created_at` / `closed_at` / `due_at` |
-| URL 字段 | `_url` 后缀（R8）；类型 `string`，format `uri` | `avatar_url` / `download_url` |
-| ID 字段（响应里） | `<resource>_id` 形式（R7） | `matter_id` / `creator_uid` |
-| 数组字段 | 跟元素相关的复数名 | `assignee_uids` / `tag_ids` |
+| 字段类型 | json tag 规则 | Go 类型 | swaggertype | 例 |
+|---|---|---|---|---|
+| 路径 / 响应 ID（R7）| `<resource>_id` | `string` | `"string,uuid"`（如需要）| `matter_id` / `user_id` |
+| 普通字段（R8）| snake_case | 对应原生类型 | — | `title` / `page_size` |
+| 布尔字段（R8）| `is_` / `has_` / `can_` 前缀 | `bool` | — | `is_active` / `has_more` |
+| 时间字段（R3）| `_at` 后缀 | `string` / `*string` | `"string,date-time"`（RFC3339）| `created_at` / `due_at` |
+| URL 字段（R8）| `_url` 后缀 | `string` | `"string,uri"` | `avatar_url` / `download_url` |
+| 数组字段 | 跟元素相关的复数名 | `[]T` | — | `assignee_uids` / `tag_ids` |
+| 大整数 | snake_case | `int64` | `"integer,int64"` | `total_bytes` |
 
-> `creator_uid` 是历史保留 —— 跟 octo-lib 的 user/uid 跨域语义对应；新增字段一律用 `_id`，不要新造 `_uid` 字段。
+> `creator_uid` 是历史保留——对应 octo-lib 的 user/uid 跨域语义；新字段一律用 `_id`，不新造 `_uid`。
 
-### Go struct 示例（请求 + 响应）
+### Go struct 示例
 
 ```go
 type CreateMatterReq struct {
@@ -216,22 +215,10 @@ type MatterResp struct {
 }
 ```
 
-要点：
-- Go 标识符按 Go 风格（`AssigneeUIDs` / `AvatarURL`），**json tag 必须 snake_case**（这是 OpenAPI yaml 里的字段名）
-- 时间字段：Go 用 `string`（或 `*string` 可空）+ `swaggertype:"string,date-time"` —— 让 swag 生成 RFC3339 + `format: date-time`
-- URL 字段：Go 用 `string` + `swaggertype:"string,uri"` —— 让 swag 生成 `format: uri`
-- 可选字段：json tag 加 `omitempty`，Go 类型用指针（`*string`）表示语义上的 null
+要点（struct 里不一眼可见的约束）：
+- Go 标识符 PascalCase / `AssigneeUIDs` 这种是 Go 风格；**OpenAPI yaml 里的字段名取自 json tag**，必须 snake_case
+- 可选字段：json tag 加 `omitempty`；语义上可 null → Go 类型用指针（`*string`）
 - 入参校验：`binding:"required,max=200"` 等 gin 标签
-
-### Go 类型与 swaggertype 对照
-
-| 字段语义 | Go 类型 | json tag | swaggertype |
-|---|---|---|---|
-| 时间（RFC3339）| `string` 或 `*string` | `<name>_at` | `"string,date-time"` |
-| URL | `string` | `<name>_url` | `"string,uri"` |
-| UUID | `string` | `<resource>_id` | `"string,uuid"`（如需要）|
-| 枚举 | `string` | snake_case | 通常不需要 swaggertype，用 enum binding |
-| 大整数 | `int64` | snake_case | `"integer,int64"` |
 
 ### 反模式
 
@@ -240,8 +227,7 @@ type MatterResp struct {
 | `pageSize` / `createTime` | `page_size` / `created_at` | R8 camelCase |
 | `active` / `more` | `is_active` / `has_more` | R8 无前缀布尔 |
 | `avatar` | `avatar_url` | R8 URL 无后缀 |
-| `created_time` / `create_at` | `created_at` | R3 时间后缀拼错 |
-| `created_ts` / `created` | `created_at` | R3 必须 `_at` 后缀 |
+| `created_time` / `create_at` / `created_ts` / `created` | `created_at` | R3 时间字段必须 `_at` 后缀 |
 | `id` (path param) | `matter_id` | R7 裸 id |
 | `uid` / `short_id` / `*_no` | `<resource>_id` | R7 历史命名全禁 |
 | json tag `MatterID` / `matterId` | json tag `matter_id` | R8 — json tag 必须 snake_case（Go 字段名是 PascalCase 没事）|
@@ -392,25 +378,15 @@ func (h *MatterHandler) Delete(c *wkhttp.Context) { ... }
 
 ### @Param 写法
 
+格式：`@Param <name> <in> <type> <required> "<description>"`
+
+`<in>` 取值: `path` / `query` / `body` / `header` / `formData`（文件上传）。
+
 ```go
-// path 参数
-// @Param matter_id path string true "Matter ID"
-
-// query 参数
-// @Param page_size query int false "Page size, default 20"
-// @Param cursor    query string false "Cursor for next page"
-
-// body 参数
-// @Param body body CreateMatterReq true "Request body"
-
-// header
-// @Param X-Request-ID header string false "Request trace ID"
-
-// 文件上传
-// @Param file formData file true "Upload file"
+// @Param matter_id path   string true  "Matter ID"
+// @Param page_size query  int    false "Page size, default 20"
+// @Param body      body   CreateMatterReq true "Request body"
 ```
-
-参数格式：`@Param <name> <in> <type> <required> <"description">`
 
 ### @Success / @Failure 写法
 
