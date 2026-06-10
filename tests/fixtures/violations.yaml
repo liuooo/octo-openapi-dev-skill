@@ -189,7 +189,40 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BadSchema'   # not Envelope → octo-success-uses-envelope
+                $ref: '#/components/schemas/BadSchema'   # not Envelope → octo-response-uses-envelope
+
+  # Bare array response — no top-level $ref → octo-response-not-bare
+  /bare_array:
+    get:
+      operationId: bare_array.get
+      summary: Returns bare array
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BadSchema'
+
+  # Bare inline object response — no $ref → octo-response-not-bare
+  /bare_object:
+    get:
+      operationId: bare_object.get
+      summary: Returns bare inline object
+      tags: [matter]
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  foo:
+                    type: string
 
   /raw_error:
     get:

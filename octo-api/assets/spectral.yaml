@@ -155,10 +155,10 @@ rules:
   # `responses[?(@property.match(...))]` for property-name filtering.
   octo-response-uses-envelope:
     description: |
-      All response schemas must reference an envelope type (Envelope/Data/
-      CursorList/OffsetList for 2xx, Error for 4xx/5xx). Implemented as a
-      single rule covering both because spectral's jsonpath does not
-      reliably distinguish 2xx vs 4xx response keys (R1).
+      Response schemas that DO use $ref must reference an envelope type
+      (Envelope/Data/CursorList/OffsetList for 2xx, Error for 4xx/5xx).
+      Note: bare array / inline object responses (no top-level $ref) are
+      a separate violation — see octo-response-not-bare. (R1).
     severity: error
     resolved: false      # required to keep `$ref` literal instead of resolving
     given: "$.paths[*][*].responses[*].content[*].schema"
@@ -174,6 +174,26 @@ rules:
           - OffsetList
           - Error
         message: "response $ref must reference envelope type (R1)"
+
+  # Bare array (type: array) / inline object (type: object + properties)
+  # both have NO top-level $ref, so octo-response-uses-envelope misses
+  # them. This rule fires whenever a response schema lacks $ref entirely,
+  # forcing the handler to wrap in envelope.Data / CursorList / OffsetList.
+  # severity: warn during migration — many legacy handlers c.JSON raw
+  # arrays/objects; flip to error once octo-lib envelope helpers landed
+  # and existing handlers migrated.
+  octo-response-not-bare:
+    description: |
+      Response schema must use $ref to an envelope type, not a bare
+      array/inline object. Lists go through envelope.CursorList[T] or
+      envelope.OffsetList[T]; single objects through envelope.Data[T] (R1).
+    severity: warn
+    resolved: false
+    given: "$.paths[*][*].responses[*].content[*].schema"
+    then:
+      field: "$ref"
+      function: truthy
+      message: "response schema must $ref an envelope type — bare array/object is wrong (R1)"
 
   # ============================================================
   # H. @Security (R4)

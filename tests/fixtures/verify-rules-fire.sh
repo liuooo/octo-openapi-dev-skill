@@ -38,6 +38,8 @@ expected = {
     ("octo-path-param-id-suffix",    "/matters/{matter_no}"),
     ("octo-path-param-no-uid",       "/matters/{uid}"),
     ("octo-response-uses-envelope",  "/raw_success"),
+    ("octo-response-not-bare",       "/bare_array"),
+    ("octo-response-not-bare",       "/bare_object"),
     ("octo-auth-has-401",            "/auth_no_401"),
     ("octo-auth-has-403",            "/auth_no_401"),
     # boundary cases
