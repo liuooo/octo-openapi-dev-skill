@@ -21,42 +21,17 @@ OCTO 项目 OpenAPI 接口规范的完整定义。
 
 ### A.1 仓库 = 服务命名空间
 
-OCTO 是多服务架构，**每个模块仓库一个独立服务**，各自一套 API 表面。客户端走统一 `OCTO_API_BASE_URL` 网关分流。
+每个 OCTO 模块仓库 = 独立服务，客户端通过 `OCTO_API_BASE_URL` 网关分流。
 
-**网关挂载标准**:
+**URL 分层**: 客户端看到的是 `<host>/[<service>/]api/v1/<resource>`，但 **service spec 只描述 `/v1/<resource>` 这一段**。`<service>/` 与 `/api/` 由网关层加（部署管），不进 OpenAPI；Go 内部 `r.Group("/v1")` + swag `@BasePath /v1`。
 
-| 服务类型 | 网关挂载点 | 客户端 URL 形态 |
-|---|---|---|
-| 核心（`octo-server`）| `/api/` | `<host>/api/v1/<resource>` |
-| 子服务（`octo-matter` / `octo-smart-summary` / 其它）| `/<service>/api/` | `<host>/<service>/api/v1/<resource>` |
+| 服务 | 网关挂载 | `servers:` URL | spec 内部资源（非穷尽）|
+|---|---|---|---|
+| `octo-server` | `/api/` | `https://<host>/api` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
+| `octo-matter` | `/matter/api/` | `https://<host>/matter/api` | matters / `matters/{id}/_extract` / `matters/{id}/timeline` / `matters/{id}/assignees` / `matters/{id}/channels` |
+| `octo-smart-summary` | `/summary/api/` | `https://<host>/summary/api` | summaries / templates / schedules / chat_candidates / member_candidates / `_infer` / internal/task_events / internal/worker_triggers |
 
-`<service>` 段使用仓库短名（`matter` 对应 `octo-matter`，`summary` 对应 `octo-smart-summary` 等）。网关剥离**整个挂载点（含 `/api/`）**后转发到服务，服务接收到的是 `/v1/<resource>`。
-
-**服务内部 spec 标准**:
-
-服务内部 OpenAPI spec 的路径**统一为 `/v1/<resource>`**。`/api/` 段属网关层，**不进 spec**；`<service>/` 段同理。`servers:` 块声明网关挂载位置：
-
-| 服务 | spec 路径 | `servers:` URL 示例 |
-|---|---|---|
-| `octo-server` | `/v1/<resource>` | `https://<host>/api` |
-| `octo-matter` | `/v1/<resource>` | `https://<host>/matter/api` |
-| `octo-smart-summary` | `/v1/<resource>` | `https://<host>/summary/api` |
-
-实现：Go 内部用 `r.Group("/v1")` 注册路由（不加 `/api/`）；swag main.go `@BasePath /v1`。跨服务 spec 路径形态完全一致，差异只在 `servers:` URL。
-
-**资源 / 动作示意**（spec 内部路径，非穷尽）:
-
-| 服务 | 资源 / 动作 |
-|---|---|
-| `octo-server` | matters / users / groups / bots / channels / threads / spaces / messages / files / events / sessions / grants / scopes / clients / app_bots / robots / integrations |
-| `octo-matter` | matters / `matters/{id}/_extract` / `matters/{id}/timeline` / `matters/{id}/assignees` / `matters/{id}/channels` |
-| `octo-smart-summary` | summaries / templates / schedules / chat_candidates / member_candidates / `_infer` / internal/task_events / internal/worker_triggers |
-
-**其它约束**:
-
-- **服务名不进 spec**。网关挂载点（`/summary/api/` `/matter/api/`）跟 OpenAPI spec 解耦，spec 描述本服务自身 `/v1/<resource>` 即可
-- **单服务内没有命名空间概念**。`/v1/internal/...` `/v1/admin/...` 等前缀按 A.2 "四角色"归入 audience / domain / 动作
-- 规范**逐仓库适用**: 每仓库 CI 独立跑
+单服务内**没有命名空间**——`/v1/internal/...` `/v1/admin/...` 等前缀按 A.2 四角色归 audience / domain / 动作。规范**逐仓库适用**，每仓库 CI 独立跑。
 
 ### A.2 URL 段的四角色
 
